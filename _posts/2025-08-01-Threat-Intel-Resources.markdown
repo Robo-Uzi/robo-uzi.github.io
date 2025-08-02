@@ -12,6 +12,8 @@ tags: [Resources]
 
 - **[VirusTotal](https://www.virustotal.com/gui/home/upload)**: Aggregates scan results from antivirus engines, provides sandboxing, behavior analysis, and community comments.
 
+- **[Wayback Machine](https://web.archive.org/)**: Archive of websites.
+
 - **[AbuseIPDB](https://www.abuseipdb.com/)**: Crowd sourced database of IPs reported for abuse.
 
 - **[vx-underground](https://vx-underground.org/)**: Repository of malware samples, research papers, and threat intel.
