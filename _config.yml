@@ -21,7 +21,7 @@
 title: Robo.Uzi's Writeups
 email: test
 description: >- # this means to ignore newlines until "baseurl:"
-  I made this site to share my write-ups on capture the flag events as well as rooms from tryhackme and hackthebox. Enjoy!
+  I made this site to share my write-ups on capture the flag events as well as rooms from tryhackme and hackthebox. In the post titles CTF will indicate a post about a CTF event, THM a tryhackme post, and HTB a hackthebox post! Enjoy!
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: N/A

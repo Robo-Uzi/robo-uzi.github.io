@@ -1,8 +1,9 @@
 ---
 layout: post
-title:  "Nahamcon 2025"
+title:  "Nahamcon 2025 (CTF)"
 date:   2025-08-01 18:27:43 -0400
-categories: CTFs
+author: robo.uzi
+tags: [CTF, NoSQL, Web]
 ---
 ## Screenshot
 
@@ -277,7 +278,7 @@ while not flag.endswith("}"):
         break
 ```
 {% endraw %}
-After some time I have the flag. It didnt print the final `}` but I got the flag so didnt troubleshoot the script.
+After some time I have the flag.
 
 ___
 ## Method in the Madness
@@ -290,7 +291,7 @@ HackingHub has provided this CTF challenge!
 
 http://challenge.nahamcon.com:31645/
 
-Visiting this link I see 6 check boxes. The site led me to http://challenge.nahamcon.com:31645/interesting where I decided to curl the `/interesting` endpoint with different http methods. After using `OPTIONS`, `HEAD`, `GET`, `POST`, `PUT`, `DELETE`, and `PATCH` I got the flag! I'm not sure which one didnt count.
+Visiting this link I see 6 check boxes. The site led me to `http://challenge.nahamcon.com:31645/interesting` where I need to run curl with different http methods. After using `OPTIONS`, `HEAD`, `GET`, `POST`, `PUT`, `DELETE`, and `PATCH` I got the flag! I'm not sure which one didnt count.
 
 ___
 ## flagsflagsflags

