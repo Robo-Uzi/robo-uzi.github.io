@@ -6,38 +6,87 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
     {% include head-custom.html %}
-
-{% seo %}
+    {% seo %}
   </head>
 
-  <body>
-
-    <header>
-      <div class="container">
-        <a id="a-title" href="{{ '/' | relative_url }}">
-          <h1>{{ site.title | default: site.github.repository_name }}</h1>
-        </a>
-        <section id="pages">
-            {%- for page in site.pages -%}
-                <a href="{{ page.url }}">{{ page.title | escape }}</a>&nbsp;
-            {%- endfor -%}
-        </section>
-        <h2>{{ site.description | default: site.github.project_tagline }}</h2>
-
-        <section id="downloads">
-          {% if site.show_downloads %}
-            <a href="{{ site.github.zip_url }}" class="btn">Download as .zip</a>
-            <a href="{{ site.github.tar_url }}" class="btn">Download as .tar.gz</a>
-          {% endif %}
-          <a href="{{ site.github.repository_url }}" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
-        </section>
-      </div>
-    </header>
-
+<body>
+  <header>
     <div class="container">
-      <section id="main_content">
-        {{ content }}
-      </section>
+      <a id="a-title" href="{{ '/' | relative_url }}">
+        <h1>{{ site.title | default: site.github.repository_name }}</h1>
+      </a>
+      <h2 class="tagline">{{ site.description | default: site.github.project_tagline }}</h2>
+
+      <nav id="main-nav">
+        <a href="{{ '/' | relative_url }}">Home</a>
+        <a href="{{ '/about/' | relative_url }}">About</a>
+        <a href="{{ site.github.repository_url }}" class="btn btn-github">GitHub Repo</a>
+      </nav>
     </div>
-  </body>
+  </header>
+
+  <main class="container">
+    <section id="main_content">
+      {% if page.url == "/" %}
+      <div style="display: flex; flex-wrap: wrap; gap: 2rem; justify-content: space-between;">
+        <!-- THM Posts -->
+        <div style="flex: 1; min-width: 250px;">
+          <h3>TryHackMe</h3>
+          <ul>
+          {% for post in site.posts %}
+            {% if post.title contains "THM" %}
+              <li>
+                <a href="{{ post.url }}">{{ post.title }}</a><br>
+                <small>{{ post.date | date: "%b %-d, %Y" }}</small>
+              </li>
+            {% endif %}
+          {% endfor %}
+          </ul>
+        </div>
+
+        <!-- CTF Posts -->
+        <div style="flex: 1; min-width: 250px;">
+          <h3>CTF Events</h3>
+          <ul>
+          {% for post in site.posts %}
+            {% if post.title contains "CTF" %}
+              <li>
+                <a href="{{ post.url }}">{{ post.title }}</a><br>
+                <small>{{ post.date | date: "%b %-d, %Y" }}</small>
+              </li>
+            {% endif %}
+          {% endfor %}
+          </ul>
+        </div>
+
+        <!-- Resources -->
+        <div style="flex: 1; min-width: 250px;">
+          <h3>Resources</h3>
+          <ul>
+          {% for post in site.posts %}
+            {% if post.title contains "Resources" %}
+              <li>
+                <a href="{{ post.url }}">{{ post.title }}</a><br>
+                <small>{{ post.date | date: "%b %-d, %Y" }}</small>
+              </li>
+            {% endif %}
+          {% endfor %}
+          </ul>
+        </div>
+      </div>
+      {% else %}
+        {{ content }}
+      {% endif %}
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <hr>
+      <p style="text-align: center; font-size: 0.9em; color: #888;">
+        Built with <a href="https://pages.github.com/themes/" target="_blank">Jekyll + Hacker Theme</a>.
+      </p>
+    </div>
+  </footer>
+</body>
 </html>

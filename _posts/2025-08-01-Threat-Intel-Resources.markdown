@@ -30,6 +30,8 @@ tags: [Resources]
 
 - **[PhishTool](https://app.phishtool.com/sign-up/community)**: Forensic phishing email analysis.
 
+- **[MxToolBox](https://mxtoolbox.com/EmailHeaders.aspx)**: Email header analysis.
+
 - **[Browserling](https://www.browserling.com/)**: Browser sandboxing. (Free version is limited).
 
 - **[Talos Intelligence](https://talosintelligence.com)**: Monitor and analyze real time global cyber threat activity.
