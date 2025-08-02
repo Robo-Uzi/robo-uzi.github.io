@@ -17,7 +17,7 @@ Well anyway, I think I remember the password was just **`password`**!
 
 **Attachments:** Screenshot.png
 
-I put the photo in `https://www.imagetotext.info/` and fixed the small errors it made in translating the text back to the correct characters.
+I put the photo (a photo of a hexdump) in `https://www.imagetotext.info/` and fixed the small errors it made in translating the text back to the correct characters.
 ```python
 import re
 
