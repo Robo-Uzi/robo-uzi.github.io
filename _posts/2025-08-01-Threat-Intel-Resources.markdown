@@ -6,6 +6,8 @@ author: robo.uzi
 tags: [Resources]
 ---
 
+**Links and tools shared on this site are credited to their original creators. All rights belong to their respective authors.**
+
 - **[Urlscan.io](https://urlscan.io)**: Used to automate browsing and crawling through websites.
 
 - **[Censys](https://search.censys.io/)**: Scans the public internet.

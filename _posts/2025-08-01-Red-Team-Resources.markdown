@@ -6,6 +6,8 @@ author: robo.uzi
 tags: [Resources]
 ---
 
+**Links and tools shared on this site are credited to their original creators. All rights belong to their respective authors.**
+
 - **[revshells](https://www.revshells.com/)**: Generate all types of reverse shells.
 
 - **[GTFObins](https://gtfobins.github.io/)**: Living off the land Unix binaries that can be used to bypass local security restrictions in misconfigured systems.
@@ -45,6 +47,10 @@ tags: [Resources]
 - **[Urlscan.io](https://urlscan.io)**: Used to automate browsing and crawling through websites.
 
 - **[dnsdumpster](https://dnsdumpster.com/)**: Find & lookup dns records
+
+- **[viewdns](https://viewdns.info/)**: A multi tool website for DNS, IP, and domain information gathering.
+
+- **[Wayback Machine](https://web.archive.org/)**: An archive that captures and stores snapshots of websites over time, allowing you to view historical versions of web pages for reconnaissance and investigation.
 
 - **[hashcat](https://hashcat.net/wiki/doku.php?id=example_hashes)**: Hashcat example hashes.
 
