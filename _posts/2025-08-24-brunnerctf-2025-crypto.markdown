@@ -4,6 +4,7 @@ title:  "BrunnerCTF 2025 Cryptography Challenges"
 date:   2025-08-24 21:07:10 -0400
 author: robo.uzi
 tags: [CTF, crypto]
+permalink: /brunnerctf-2025-crypto/
 ---
 * TOC
 {:toc}

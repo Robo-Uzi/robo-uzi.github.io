@@ -4,6 +4,7 @@ title:  "BrunnerCTF 2025 Mobile Challenges"
 date:   2025-08-24 21:40:10 -0400
 author: robo.uzi
 tags: [CTF, mobile]
+permalink: /brunnerctf-2025-mobile/
 ---
 * TOC
 {:toc}

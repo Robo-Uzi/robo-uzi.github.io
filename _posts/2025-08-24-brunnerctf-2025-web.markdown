@@ -4,6 +4,7 @@ title:  "BrunnerCTF 2025 Web Challenges"
 date:   2025-08-24 20:20:30 -0400
 author: robo.uzi
 tags: [CTF, Web]
+permalink: /brunnerctf-2025-web/
 ---
 * TOC
 {:toc}

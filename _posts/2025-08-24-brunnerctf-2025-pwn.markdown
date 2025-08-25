@@ -4,6 +4,7 @@ title:  "BrunnerCTF 2025 Pwn Challenges"
 date:   2025-08-24 22:07:10 -0400
 author: robo.uzi
 tags: [CTF, pwn]
+permalink: /brunnerctf-2025-pwn/
 ---
 * TOC
 {:toc}
