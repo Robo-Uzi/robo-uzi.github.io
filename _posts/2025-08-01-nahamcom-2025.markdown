@@ -5,6 +5,8 @@ date:   2025-08-01 18:27:43 -0400
 author: robo.uzi
 tags: [CTF, NoSQL, Web]
 ---
+* TOC
+{:toc}
 ## Screenshot
 
 Warmups - Author: @John Hammond  
