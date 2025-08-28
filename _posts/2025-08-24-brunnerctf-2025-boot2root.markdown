@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "BrunnerCTF 2025 Boot2Root Challenges"
+title:  "Brunner 2025 Boot2Root Challenges"
 date:   2025-08-24 22:43:10 -0400
 author: robo.uzi
 tags: [CTF, boot2root]

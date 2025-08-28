@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "BrunnerCTF 2025 Misc Challenges"
+title:  "Brunner 2025 Misc Challenges"
 date:   2025-08-24 22:29:10 -0400
 author: robo.uzi
 tags: [CTF, misc]

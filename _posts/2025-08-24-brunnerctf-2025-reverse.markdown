@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "BrunnerCTF 2025 Reverse Engineering Challenges"
+title:  "Brunner 2025 Reverse Engineering Challenges"
 date:   2025-08-24 21:48:10 -0400
 author: robo.uzi
 tags: [CTF, reverse]

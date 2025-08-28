@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "BrunnerCTF 2025 OSINT Challenges"
+title:  "Brunner 2025 OSINT Challenges"
 date:   2025-08-24 20:20:30 -0400
 author: robo.uzi
 tags: [CTF, OSINT]

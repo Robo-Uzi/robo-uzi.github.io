@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "BrunnerCTF 2025 Forensics Challenges"
+title:  "Brunner 2025 Forensics Challenges"
 date:   2025-08-24 22:18:10 -0400
 author: robo.uzi
 tags: [CTF, forensics]

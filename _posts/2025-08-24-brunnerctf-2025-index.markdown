@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "BrunnerCTF 2025 Index"
+title:  "BrunnerCTF 2025"
 date:   2025-08-24 23:06:10 -0400
 author: robo.uzi
 tags: [CTF]
