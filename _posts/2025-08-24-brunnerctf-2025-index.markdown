@@ -18,7 +18,7 @@ tags: [CTF]
 - [Misc Challenges](/brunnerctf-2025-misc/)
 - [Boot2Root Challenges](/brunnerctf-2025-boot2root/)
 
-I played this one solo and there were many challenges. I had a lot of fun and came in at 150th place out of 1500 teams! Hopefully these writeups are helpful! Thanks for checking it out. 
+I played this one solo and there were many challenges. I had a lot of fun and came in at 150th place out of 1158 teams! Hopefully these writeups are helpful!
 
 ___
 
