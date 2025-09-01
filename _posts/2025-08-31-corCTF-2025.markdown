@@ -1,0 +1,15 @@
+---
+layout: post
+title:  "corCTF 2025"
+date:   2025-08-31 22:45:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [cor.shop (misc)](/corctf-2025-corshop/)
+- [keys (crypto)](/corctf-2025-keys/)
+
+___
+
