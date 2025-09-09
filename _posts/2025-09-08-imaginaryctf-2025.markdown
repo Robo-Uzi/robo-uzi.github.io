@@ -1,0 +1,18 @@
+---
+layout: post
+title:  "imaginaryCTF 2025"
+date:   2025-09-08 21:43:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [codenames-1 (web)](/imaginaryctf-2025-codenames-1/)
+- [imaginary-notes (web)](/imaginaryctf-2025-imaginary-notes/)
+- [certificate (web)](/imaginaryctf-2025-certificate/)
+- [wave (forensics)](/imaginaryctf-2025-wave/)
+- [obfuscated-1 (forensics)](/imaginaryctf-2025-obfuscated-1/)
+- [weird-app (reversing)](/imaginaryctf-2025-weird-app/)
+- [babybof (pwn)](/imaginaryctf-2025-babybof/)
+- [significant (misc)](/imaginaryctf-2025-significant/)
