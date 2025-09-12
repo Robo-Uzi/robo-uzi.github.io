@@ -1,0 +1,16 @@
+---
+layout: post
+title:  "watCTF 2025"
+date:   2025-09-11 19:51:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [gooses-typing-test (web)](/watctf-2025-gooses-typing-test/)
+- [2p2t (crypto)](/watctf-2025-2p2t/)
+- [curve-desert (crypto)](/watctf-2025-curve-desert/)
+- [horse-drawn (misc)](/watctf-2025-horse-drawn/)
+- [web-slinger-logs (misc)](/watctf-2025-web-slinger-logs/)
+- [design-portfolio (forensics, steganography)](/watctf-2025-design-portfolio/)
