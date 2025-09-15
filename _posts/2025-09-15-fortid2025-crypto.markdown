@@ -1,0 +1,83 @@
+---
+layout: post
+title:  "Warm Up (crypto)"
+date:   2025-09-15 12:42:43 -0400
+author: robo.uzi
+tags: [ctf]
+permalink: /fortid-2025-crypto/
+---
+
+**Title:** Crypto
+
+**Description:** These keys look completely different, yet they have something in common...
+
+I get these files: 
+```shell
+file *  
+flag1.enc: ASCII text, with very long lines (512)  
+flag2.enc: ASCII text, with very long lines (512)  
+key1.pub:  ASCII text  
+key2.pub:  ASCII text
+```
+
+Here are the keys:
+```shell
+cat key1.pub
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAm1PtORdHA6pyJn9fU2Gh
+grU4v+tPnCX1ji+Dih/qn0ze/NrX3ci21JjCOGp4TW2z24gaCI5MwWWvof89iYQ3
+9ZXyw5c5AR1cG7y+HSwC8HASBwlp3zZ62hJmafZd684dWEyUfqUvlggStvWr2BLy
+Pr3udlrPvEFoX0t5Ooy/4xAiYM/X9iv9Y8DVvEyOnctWocrVJuFLXHcogINUGgIT
+jJ7ol84OXZrG18P1Dqq+KO8qNzrvVb1NNTVjFbC6Jh8d9Zm5onu1jxWQ1pZWz3AB
+7aFA+Yl90kEhksECLgXXVJiTm3EFpRHO0nP2VgGHu6ZHZ3D6ay2CXIduO+yqlPK0
+oQIDAQAB
+-----END PUBLIC KEY-----
+
+cat key2.pub
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAubHpZY/hQ0+PIp7UoM1P
+npvLsaxxWi3rrZX3lTKbHtTBeN6r84/ahgWuLeS6KOV1P1tGTP5H0GIdWDLqfFa3
+ua6s6ZZLghliWF5okQay7WVf/Et84sMyR3wj/rCq7ttu26U72DTeSKlL/hiUqYuj
+mHUM1zhRMfgL4iNWQhK3Viv6Cfru+PF9U0awDI8rv2AVkorHe6bIDfkcpKPSjhSB
+H409hU8TRVCUNjs7BUMWE1EgdLy/NEChGG+rHUTIptioIYSkUVuGR4PuojEzDtZ2
+cOb8Aza3orkMFC4Xt8gRyZJad0/WyJruj9sgURJv6r110qrrCos3F86RsYtl9Uz3
+6QIDAQAB
+-----END PUBLIC KEY-----
+```
+
+Run this script to decrypt the encrypted text:
+```python
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Hash import SHA256
+import math
+
+def load_key(path):
+    return RSA.import_key(open(path,"rb").read())
+
+def load_hex_ct(path):
+    return bytes.fromhex(open(path,"rb").read().strip().decode())
+
+# find shared prime
+k1, k2 = load_key("key1.pub"), load_key("key2.pub")
+p = math.gcd(k1.n, k2.n)
+q1, q2 = k1.n // p, k2.n // p
+
+# build private keys
+d1, d2 = pow(k1.e, -1, (p-1)*(q1-1)), pow(k2.e, -1, (p-1)*(q2-1))
+priv1, priv2 = RSA.construct((k1.n, k1.e, d1, p, q1)), RSA.construct((k2.n, k2.e, d2, p, q2))
+
+def decrypt(priv, ct_hex):
+    cipher = PKCS1_OAEP.new(priv, hashAlgo=SHA256)
+    return cipher.decrypt(load_hex_ct(ct_hex)).decode()
+
+# decrypt flag and combine
+part1 = decrypt(priv1, "flag1.enc")
+part2 = decrypt(priv2, "flag2.enc")
+flag = part1 + part2
+
+print("Flag:", flag)
+```
+The script loads the public keys and finds the shared prime `p`. It finds `q` and `d` to build full private keys and decrypt using RSA-OAEP with SHA-256.
+
+`FortID{4nd_1_Sa1d_Wh47_Ab07_4_C0mm0n_Pr1m3_F4ct0r?}`

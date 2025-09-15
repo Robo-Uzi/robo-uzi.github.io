@@ -1,0 +1,128 @@
+---
+layout: post
+title:  "Warm Up (rev)"
+date:   2025-09-15 12:55:43 -0400
+author: robo.uzi
+tags: [ctf]
+permalink: /fortid-2025-rev/
+---
+
+**Title:** Rev
+
+**Description:** In order to find the flag, you must first search for the flag.
+
+I get this binary:
+```shell
+file chall  
+chall: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=3a878b7fcc10a7c0634d48f167a3b2b7bdbf  
+cb2f, for GNU/Linux 3.2.0, not stripped
+```
+
+This is what I see when running it:
+```shell
+./chall  
+Enter flag: test    
+Nope
+```
+
+Open it in ghidra. This is the main function:
+```d
+undefined8 main(void)
+
+{
+  int iVar1;
+  size_t sVar2;
+  long in_FS_OFFSET;
+  int local_290;
+  int local_28c;
+  int local_288;
+  int local_284;
+  uint local_280;
+  char local_278 [80];
+  char acStack_228 [520];
+  long local_20;
+  
+  local_20 = *(long *)(in_FS_OFFSET + 0x28);
+  printf("Enter flag: ");
+  __isoc99_scanf(&DAT_001021ee,local_278);
+  sVar2 = strlen(local_278);
+  if (sVar2 < 0x47) {
+    local_290 = 0;
+    local_28c = 0;
+    while( true ) {
+      sVar2 = strlen(local_278);
+      if (sVar2 <= (ulong)(long)local_28c) break;
+      local_288 = 0;
+      local_284 = 0xff;
+      while (iVar1 = (local_284 + local_288) / 2, iVar1 != local_278[local_28c]) {
+        if (iVar1 < local_278[local_28c]) {
+          acStack_228[local_290] = '>';
+          local_288 = iVar1 + 1;
+          local_290 = local_290 + 1;
+        }
+        else {
+          acStack_228[local_290] = '<';
+          local_284 = iVar1 + -1;
+          local_290 = local_290 + 1;
+        }
+      }
+      acStack_228[local_290] = '=';
+      local_28c = local_28c + 1;
+      local_290 = local_290 + 1;
+    }
+    if (local_290 == 0x1c0) {
+      for (local_280 = 0; local_280 < 0x1c0; local_280 = local_280 + 1) {
+        if (acStack_228[(int)local_280] != target[(int)local_280]) {
+          puts("Nope");
+          goto LAB_001013fb;
+        }
+      }
+      puts("Correct!");
+    }
+    else {
+      puts("Nope");
+    }
+  }
+  else {
+    puts("Nope");
+  }
+LAB_001013fb:
+  if (local_20 != *(long *)(in_FS_OFFSET + 0x28)) {
+                    /* WARNING: Subroutine does not return */
+    __stack_chk_fail();
+  }
+  return 0;
+}
+```
+The program does a binary search which transforms each character into a sequence of `<`, `>`, `=`.
+
+Running `strings` I see the transformed flag: `<><<<>>=<>>=<>>><<>=<>>><><=<><<>...`
+
+Run this script:
+```python
+flag = "<><<<>>=<>>=<>>><<>=<>>><><=<><<><=<><<<><=<>>>>=<<>><=<>><<<=<<>>=<>=<><>><=<<>><<<=<>>><>=<>>><<>=<>=<><><>>=<<>><=<>><=<>><=<<>><<=<>><<>=<<>><>=<>=<<>><><=<>><>>>=<>><<><=<>=<><<>><=<<>><=<>>><<>=<>><>>>=<>=<><>><=<<>><<<=<>>><>=<>>><<>=<>=<><<<>>=<>>><>=<>><>>>=<>><<><=<<>><><=<>><>>=<<>><=<>><>>>=<<>>=<<>><><=<<>><<=<>=<><><=<<>><=<>><<<=<>>><<>=<>><<=<>><><<=<>=<><<<<=<>><>><=<>><=<<>><<<=<>>><<>=<<>><<=<<>>=<>><><<=<>><>>=<<>><>=<>>>>>="
+
+def decode_binary_search(seq):
+    result = ""
+    i = 0
+    while i < len(seq):
+        low = 0
+        high = 255
+        while True:
+            mid = (low + high) // 2
+            if seq[i] == '=':
+                result += chr(mid)
+                i += 1
+                break
+            elif seq[i] == '>':
+                low = mid + 1
+            elif seq[i] == '<':
+                high = mid - 1
+            i += 1
+    return result
+
+flag = decode_binary_search(flag)
+print(flag)
+```
+
+`FortID{3a7_Y0ur_V3gg1e5_4nd_L3rn_Y0ur_Fund4m3n741_S3arch_Alg0r17hm5}`
