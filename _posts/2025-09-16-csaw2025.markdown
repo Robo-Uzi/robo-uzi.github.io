@@ -1,0 +1,451 @@
+---
+layout: post
+title:  "CSAW 2025 CTF"
+date:   2025-09-16 12:08:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+
+
+**Title:** Shadow Protocol
+
+**Author:** jackhax
+
+**Category:** rev
+
+**Description:** Space explorers have recovered a strange encryption oracle drifting in deep space, originating from an alien civilization in a distant galaxy. The oracle emits encrypted transmissions using an unfamiliar cosmic protocol. 
+
+`nc chals.ctf.csaw.io 21002`
+
+I get a binary:
+```shell
+file shadow_protocol  
+shadow_protocol: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=dcda793c6983326619cae28e35129285cbfe0f40, for GNU/Linux 3.2.0, not stripped
+
+./shadow_protocol  
+       ✦         .       *        .      ✦  
+  ✦        .     SHADOW PROTOCOL INITIATED     .       ✦  
+       *        ✦       .       ✶        .  
+  
+[SPACE] A cosmic signal has been scrambled using the Shadow Protocol at time: 1757780700.  
+[SPACE] Encrypted message:  
+402F5C949395BD1C30237BAFDC94D6435C082EB09CC2E7107E  
+  
+[SPACE] Transmission complete.
+```
+
+I open the binary in ghidra and find four core functions. `main`, `shadow_protocol`, `shadow_tree_mix`, and `build_bittree`.
+
+In `main()` the program seeds the libc PRNG with the current time rounded down to the nearest minute. It then calls `rand()` twice, shifts the first result left by 32 bits, and ORs it with the second result to form a single 64 bit value stored in `local_d8`. 
+
+That 64 bit number is passed into `build_bittree` and the output is processed by `shadow_tree_mix` which writes a new 64 bit output into `local_f0` (and an unused 32 bit value into `local_f4`). 
+
+This 64 bit output in `local_f0` is then given to `shadow_protocol` producing another 64 bit value in `local_c8`. The program finally encrypts the flag by XORing each character with one of the eight bytes of `local_c8`, cycling through its bytes in little endian order so the key repeats every eight characters.
+```d
+undefined8 main(void)
+
+{
+  int iVar1;
+  int iVar2;
+  time_t tVar3;
+  char *pcVar4;
+  size_t sVar5;
+  undefined8 uVar6;
+  long in_FS_OFFSET;
+  undefined4 local_f4;
+  undefined8 local_f0;
+  ulong local_e8;
+  long local_e0;
+  ulong local_d8;
+  undefined8 local_d0;
+  ulong local_c8;
+  FILE *local_c0;
+  size_t local_b8;
+  undefined8 local_b0;
+  undefined8 local_a8;
+  undefined2 local_a0;
+  undefined6 uStack_9e;
+  undefined2 uStack_98;
+  undefined8 local_96;
+  long local_20;
+  
+  local_20 = *(long *)(in_FS_OFFSET + 0x28);
+  tVar3 = time((time_t *)0x0);
+  local_e0 = (tVar3 / 0x3c) * 0x3c;
+  srand((uint)local_e0);
+  iVar1 = rand();
+  iVar2 = rand();
+  local_d8 = (long)iVar2 | (long)iVar1 << 0x20;
+  local_d0 = build_bittree(local_d8,0,0x15);
+  local_f0 = 0;
+  local_f4 = 0;
+  shadow_tree_mix(local_d0,&local_f0,&local_f4);
+  free_bittree(local_d0);
+  local_c8 = shadow_protocol(local_f0);
+  debug(local_c8);
+  local_c0 = fopen("flag.txt","r");
+  if (local_c0 == (FILE *)0x0) {
+    local_a8 = 0x6b34667b57415343;
+    local_a0 = 0x5f33;
+    uStack_9e = 0x345f67346c66;
+    uStack_98 = 0x745f;
+    local_96 = 0x7d676e31747333;
+  }
+  else {
+    pcVar4 = fgets((char *)&local_a8,0x80,local_c0);
+    if (pcVar4 == (char *)0x0) {
+      puts("Could not read flag, contact mission control.");
+      fclose(local_c0);
+      uVar6 = 1;
+      goto LAB_00101c1c;
+    }
+    fclose(local_c0);
+    sVar5 = strlen((char *)&local_a8);
+    local_b8 = sVar5;
+    if ((sVar5 != 0) && (*(char *)((long)&local_b0 + sVar5 + 7) == '\n')) {
+      local_b8 = sVar5 - 1;
+      *(undefined *)((long)&local_b0 + sVar5 + 7) = 0;
+    }
+  }
+  local_b0 = strlen((char *)&local_a8);
+  puts(&DAT_00102190);
+  puts(&DAT_001021c0);
+  puts(&DAT_00102200);
+  printf("[SPACE] A cosmic signal has been scrambled using the Shadow Protocol at time: %lld.\n",
+         local_e0);
+  puts("[SPACE] Encrypted message:");
+  for (local_e8 = 0; local_e8 < local_b0; local_e8 = local_e8 + 1) {
+    printf("%02X",(ulong)(byte)((byte)(local_c8 >> (sbyte)(((uint)local_e8 & 7) << 3)) ^
+                               *(byte *)((long)&local_a8 + local_e8)));
+  }
+  putchar(10);
+  puts("\n[SPACE] Transmission complete.");
+  getchar();
+  uVar6 = 0;
+LAB_00101c1c:
+  if (local_20 != *(long *)(in_FS_OFFSET + 0x28)) {
+                    /* WARNING: Subroutine does not return */
+    __stack_chk_fail();
+  }
+  return uVar6;
+}
+```
+
+`shadow_protocol()` splits a 64 bit input into high and low 32 bit halves and runs 8 rounds of a transformation. Each round applies S-box substitutions to the low half, XORs with a round constant (`0x1337beef`), rotates bits, and combines with the high half via addition and XOR. Then swaps halves. 
+
+After the 8 rounds the function XORs with `0xdeadbeefcafebabe`, rotates left by `0x11`, and adds `0x1234567890abcdef` to produce the final 64 bit key.
+```d
+long shadow_protocol(undefined8 param_1)
+
+{
+  uint uVar1;
+  ulong uVar2;
+  uint uVar3;
+  uint uVar4;
+  long in_FS_OFFSET;
+  uint local_44;
+  uint local_40;
+  int local_3c;
+  uint local_28 [6];
+  long local_10;
+  
+  local_10 = *(long *)(in_FS_OFFSET + 0x28);
+  local_44 = (uint)((ulong)param_1 >> 0x20);
+  local_40 = (uint)param_1;
+  local_28[0] = 0xa5a5c3c3;
+  local_28[1] = 0x5a5a9696;
+  local_28[2] = 0x3c3ca5a5;
+  local_28[3] = 0xc3c35a5a;
+  for (local_3c = 0; uVar3 = local_44, local_3c < 8; local_3c = local_3c + 1) {
+    uVar1 = ((uint)(byte)sbox[local_40 & 0xff] |
+            (uint)(byte)sbox[local_40 >> 0x18] << 0x18 |
+            (uint)(byte)sbox[local_40 >> 0x10 & 0xff] << 0x10 |
+            (uint)(byte)sbox[local_40 >> 8 & 0xff] << 8) ^ local_28[local_3c % 4];
+    uVar4 = (local_3c + 1) * 0x1337beef ^ local_44;
+    local_44 = local_40;
+    local_40 = (uVar1 >> (0x1dU - (char)local_3c & 0x1f) | uVar1 << ((char)local_3c + 3U & 0x1f)) +
+               uVar4 ^ uVar3;
+  }
+  uVar2 = CONCAT44(local_44,local_40) ^ 0xdeadbeefcafebabe;
+  if (*(long *)(in_FS_OFFSET + 0x28) != *(long *)(in_FS_OFFSET + 0x28)) {
+                    /* WARNING: Subroutine does not return */
+    __stack_chk_fail();
+  }
+  return (uVar2 << 0x11 | uVar2 >> 0x2f) + 0x1234567890abcdef;
+}
+```
+
+`build_bittree()` is used to create a binary tree with 22 leaf nodes. The leaf nodes contain 3 bit values extracted from the 64 bit input (`param_1`). For the smallest indices (when `temp` value is `<2` or `<0` in the code) the function returns fixed constants (`3`, `1`, or `7`) to ensure specific values for these leaves. These are only for the last few leaf indices. Internal nodes are empty. 
+```d
+byte * build_bittree(ulong param_1,int param_2,int param_3)
+
+{
+  int iVar1;
+  byte *pbVar2;
+  undefined8 uVar3;
+  byte local_21;
+  
+  if (param_3 < param_2) {
+    pbVar2 = (byte *)0x0;
+  }
+  else if (param_2 == param_3) {
+    iVar1 = param_2 * -3 + 0x3f;
+    if (iVar1 < 0) {
+      local_21 = 7;
+    }
+    else if (iVar1 < 2) {
+      if (iVar1 == 1) {
+        local_21 = (char)param_1 * '\x02' & 6U | 1;
+      }
+      else if (iVar1 == 0) {
+        local_21 = (byte)(((uint)param_1 & 1) << 2) | 3;
+      }
+      else {
+        local_21 = 7;
+      }
+    }
+    else {
+      local_21 = (byte)(param_1 >> ((char)iVar1 - 2U & 0x3f)) & 7;
+    }
+    pbVar2 = (byte *)malloc(0x18);
+    *pbVar2 = local_21;
+    *(undefined8 *)(pbVar2 + 0x10) = 0;
+    *(undefined8 *)(pbVar2 + 8) = *(undefined8 *)(pbVar2 + 0x10);
+  }
+  else {
+    iVar1 = (param_3 + param_2) / 2;
+    pbVar2 = (byte *)malloc(0x18);
+    *pbVar2 = 0;
+    uVar3 = build_bittree(param_1,param_2,iVar1);
+    *(undefined8 *)(pbVar2 + 8) = uVar3;
+    uVar3 = build_bittree(param_1,iVar1 + 1,param_3);
+    *(undefined8 *)(pbVar2 + 0x10) = uVar3;
+  }
+  return pbVar2;
+}
+```
+
+`shadow_tree_mix` traverses the binary tree constructed by `build_bittree` in order. Its purpose is to process the tree and generate two outputs:
+
+1: 64 bit hash (`*param_2`) created by packing the 3 bit values from left to right from every leaf node in the tree. 
+
+2: 32 bit counter (`*param_3`) which counts the total number of leaf nodes processed.
+```d
+void shadow_tree_mix(byte *param_1,ulong *param_2,int *param_3)
+
+{
+  if (param_1 != (byte *)0x0) {
+    shadow_tree_mix(*(undefined8 *)(param_1 + 8),param_2,param_3);
+    shadow_tree_mix(*(undefined8 *)(param_1 + 0x10),param_2,param_3);
+    if ((*(long *)(param_1 + 8) == 0) && (*(long *)(param_1 + 0x10) == 0)) {
+      *param_2 = *param_2 * 8 | (ulong)(*param_1 & 7);
+      *param_3 = *param_3 + 1;
+    }
+  }
+  return;
+}
+```
+
+I run this script to get the flag:
+```python
+#!/usr/bin/env python3
+
+import socket
+import re
+import sys
+from ctypes import CDLL, c_uint, c_int
+import struct
+
+HOST = "chals.ctf.csaw.io"
+PORT = 21002
+TIMEOUT = 5
+
+# AES S-box
+SBOX = [
+0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
+0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,
+0xb7,0xfd,0x93,0x26,0x36,0x3f,0xf7,0xcc,0x34,0xa5,0xe5,0xf1,0x71,0xd8,0x31,0x15,
+0x04,0xc7,0x23,0xc3,0x18,0x96,0x05,0x9a,0x07,0x12,0x80,0xe2,0xeb,0x27,0xb2,0x75,
+0x09,0x83,0x2c,0x1a,0x1b,0x6e,0x5a,0xa0,0x52,0x3b,0xd6,0xb3,0x29,0xe3,0x2f,0x84,
+0x53,0xd1,0x00,0xed,0x20,0xfc,0xb1,0x5b,0x6a,0xcb,0xbe,0x39,0x4a,0x4c,0x58,0xcf,
+0xd0,0xef,0xaa,0xfb,0x43,0x4d,0x33,0x85,0x45,0xf9,0x02,0x7f,0x50,0x3c,0x9f,0xa8,
+0x51,0xa3,0x40,0x8f,0x92,0x9d,0x38,0xf5,0xbc,0xb6,0xda,0x21,0x10,0xff,0xf3,0xd2,
+0xcd,0x0c,0x13,0xec,0x5f,0x97,0x44,0x17,0xc4,0xa7,0x7e,0x3d,0x64,0x5d,0x19,0x73,
+0x60,0x81,0x4f,0xdc,0x22,0x2a,0x90,0x88,0x46,0xee,0xb8,0x14,0xde,0x5e,0x0b,0xdb,
+0xe0,0x32,0x3a,0x0a,0x49,0x06,0x24,0x5c,0xc2,0xd3,0xac,0x62,0x91,0x95,0xe4,0x79,
+0xe7,0xc8,0x37,0x6d,0x8d,0xd5,0x4e,0xa9,0x6c,0x56,0xf4,0xea,0x65,0x7a,0xae,0x08,
+0xba,0x78,0x25,0x2e,0x1c,0xa6,0xb4,0xc6,0xe8,0xdd,0x74,0x1f,0x4b,0xbd,0x8b,0x8a,
+0x70,0x3e,0xb5,0x66,0x48,0x03,0xf6,0x0e,0x61,0x35,0x57,0xb9,0x86,0xc1,0x1d,0x9e,
+0xe1,0xf8,0x98,0x11,0x69,0xd9,0x8e,0x94,0x9b,0x1e,0x87,0xe9,0xce,0x55,0x28,0xdf,
+0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16
+]
+
+libc = CDLL("libc.so.6")
+libc.srand.argtypes = [c_uint]
+libc.rand.restype = c_int
+
+def c_rand_pair_for_seed(seed):
+    libc.srand(c_uint(seed))
+    r1 = libc.rand()
+    r2 = libc.rand()
+    # combine as in binary
+    return ( (r1 & 0xffffffff) << 32 ) | (r2 & 0xffffffff), r1, r2
+
+# build leaf values same as build_bittree logic
+def build_leaf_values(input_value, start, end, leaves):
+    if end < start:
+        return
+    if start == end:
+        temp = start * -3 + 0x3f
+        if temp < 0:
+            leaf = 7
+        elif temp < 2:
+            if temp == 1:
+                byte0 = input_value & 0xff
+                leaf = ((byte0 * 2) & 6) | 1
+            elif temp == 0:
+                leaf = (((input_value & 1) << 2) | 3) & 0xff
+            else:
+                leaf = 7
+        else:
+            shift = (temp - 2) & 0x3f
+            leaf = (input_value >> shift) & 7
+        leaves.append(leaf & 0xff)
+    else:
+        mid = (start + end) // 2
+        build_leaf_values(input_value, start, mid, leaves)
+        build_leaf_values(input_value, mid + 1, end, leaves)
+
+def pack_leaves(vals):
+    acc = 0
+    count = 0
+    for v in vals:
+        acc = ((acc * 8) | (v & 7)) & ((1<<64)-1)
+        count += 1
+    return acc, count
+
+def shadow_protocol(input_value):
+    high32 = (input_value >> 32) & 0xffffffff
+    low32 = input_value & 0xffffffff
+    round_consts = [0xa5a5c3c3, 0x5a5a9696, 0x3c3ca5a5, 0xc3c35a5a]
+    for round_num in range(8):
+        old_high = high32
+        b0 = SBOX[low32 & 0xff]
+        b1 = SBOX[(low32 >> 8) & 0xff]
+        b2 = SBOX[(low32 >> 16) & 0xff]
+        b3 = SBOX[(low32 >> 24) & 0xff]
+        mixed = (b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)) ^ round_consts[round_num % 4]
+        tweak = ((round_num + 1) * 0x1337beef) ^ high32
+        shift_r = (0x1d - round_num) & 0x1f
+        shift_l = (round_num + 3) & 0x1f
+        rotated = ((mixed >> shift_r) | ((mixed << shift_l) & 0xffffffff)) & 0xffffffff
+        high32 = low32
+        low32 = (rotated + (tweak & 0xffffffff) ^ old_high) & 0xffffffff
+    combined = ((high32 << 32) | low32) ^ 0xdeadbeefcafebabe
+    combined = ((combined << 0x11) | (combined >> (64 - 0x11))) & ((1<<64)-1)
+    combined = (combined + 0x1234567890abcdef) & ((1<<64)-1)
+    return combined
+
+def derive_key_bytes_from_packed(packed):
+    key64 = shadow_protocol(packed)
+    return [(key64 >> (8*i)) & 0xff for i in range(8)]
+
+def seed_and_decrypt(seed, ct_bytes):
+    packed_two, r1, r2 = c_rand_pair_for_seed(seed)
+    # build leaves
+    leaves = []
+    build_leaf_values(packed_two, 0, 0x15, leaves)
+    packed, count = pack_leaves(leaves)
+    key_bytes = derive_key_bytes_from_packed(packed)
+    pt = bytes([ct_bytes[i] ^ key_bytes[i % 8] for i in range(len(ct_bytes))])
+    return pt, (r1, r2, packed_two, packed, key_bytes, count)
+
+def read_from_service(host, port):
+    s = socket.create_connection((host, port), timeout=TIMEOUT)
+    data = b""
+    try:
+        while True:
+            chunk = s.recv(4096)
+            if not chunk:
+                break
+            data += chunk
+    except Exception:
+        pass
+    finally:
+        s.close()
+    return data.decode(errors='ignore')
+
+def parse_output(txt):
+    # find timestamp like: "at time: 1757780700."
+    m_time = re.search(r'at time:\s*(\d+)', txt)
+    m_ct = re.search(r'Encrypted message:\s*([0-9A-Fa-f]+)', txt)
+    if not m_time or not m_ct:
+        return None, None
+    return int(m_time.group(1)), bytes.fromhex(m_ct.group(1))
+
+def is_readable(pt):
+    try:
+        s = pt.decode('utf-8')
+    except Exception:
+        return False
+    # require at least printable ASCII and braces
+    printable = all(32 <= ord(c) <= 126 for c in s)
+    return printable and ('{' in s and '}' in s)
+
+def main():
+    print(f"connecting to {HOST}:{PORT} ...")
+    txt = read_from_service(HOST, PORT)
+    if not txt:
+        print("no data received from service :(")
+        sys.exit(1)
+    print("service output:\n" + txt)
+    ts, ct = parse_output(txt)
+    if ts is None or ct is None:
+        print("couldn't parse timestamp or ciphertext from service output :(")
+        sys.exit(1)
+    print(f"timestamp = {ts}")
+    pt, info = seed_and_decrypt(ts, ct)
+    if is_readable(pt):
+        print("flag: ", pt.decode('utf-8'))
+        return
+
+if __name__ == "__main__":
+    main()
+```
+
+In the solve script `ctypes` allows calling C functions (`srand` and `rand`) to mimic the binarys random number generation. It reproduces them in `c_rand_pair_for_seed(seed)`. 
+
+The `SBOX` array is set. As seen above it is used in the `shadow_protocol` encryption function (AES [S-box](https://en.wikipedia.org/wiki/Rijndael_S-box)). 
+
+Reproduce `build_bittree` with `build_leaf_values` which generates the leaf values in the same order as the binary tree created by `build_bittree`. 
+
+Reproduce `shadow_tree_mix` with `pack_leaves`. 
+
+Reproduce the binaries `shadow_protocol` encryption function. It splits a 64 bit input into high/low 32 bit halves. Then performs 8 rounds where the low half is transformed using S-box, XOR with a round constant, a variable rotation, and combination with the high half via addition and XOR, swapping halves each round. After 8 rounds the halves are recombined, rotated, and added to a constant to produce the final 64 bit pseudorandom key.
+
+Derive the XOR key in `derive_key_bytes_from_packed` by converting the `shadow_protocol` output into 8 bytes which is used as a repeating key. 
+
+In `seed_and_decrypt`, replicate the steps from `main` in the binary. Once all the logic is figured out (hopefully.... this took.. a while...), it connects to the server and extracts the timestamp and hex ciphertext, and decrypts the flag based on the current minute etc etc. 
+
+Final thoughts:
+
+Hopefully my explanations sufficiently make sense. I think my code is somewhat cursed? Maybe I did it the hard way? Im learning on the fly for almost all these challenges and I really tried to understand this one ツ. I realize in revising this now that I could have, at a bare minimum, renamed variables inside ghidra before attempting to understand the logic and flow of the program. Yeah. Run the script and get the flag:
+```shell
+python3 solve.py  
+connecting to chals.ctf.csaw.io:21002 ...  
+service output:  
+       ✦         .       *        .      ✦  
+  ✦        .     SHADOW PROTOCOL INITIATED     .       ✦  
+       *        ✦       .       ✶        .  
+  
+[SPACE] A cosmic signal has been scrambled using the Shadow Protocol at time: 1915561800.  
+[SPACE] Encrypted message:  
+1191FEDFA6D0C98500D1E99BB7919E9015BDAAC0F1C09F890BBDEFDAF5939F9D428EAAF7F491F09D4190A89CF4CA9E872D8CAF9F9A979B8D0B9F  
+  
+[SPACE] Transmission complete.  
+  
+timestamp = 1915561800  
+flag:  csawctf{r3v3r51ng_5h4d0wy_pr070c0l5_15_c3r741n1y_n07_34sy}
+```
+
+`csawctf{r3v3r51ng_5h4d0wy_pr070c0l5_15_c3r741n1y_n07_34sy}`
