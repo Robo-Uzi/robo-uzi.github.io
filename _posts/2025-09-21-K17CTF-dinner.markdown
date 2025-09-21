@@ -1,0 +1,27 @@
+---
+layout: post
+title:  "dinner"
+date:   2025-09-21 10:29:43 -0400
+author: robo.uzi
+tags: [ctf]
+permalink: /K17-2025-dinner/
+---
+
+**Title:** dinner
+
+**Category:** beginner osint
+
+**Description:** foood!!!! fooooood!!!!! what is the name of this venue?!?!!?!? TELL ME. (no need to wrap your answer in the `K17` flag format, just enter the name).
+
+I get this photo:
+
+![Alt text](/images/location.png)
+
+I use google to reverse image search and the AI found the event: [https://tca.glueup.com/event/national-tech-summit-2025-145835/](https://tca.glueup.com/event/national-tech-summit-2025-145835/). 
+
+I find this page: [https://techcouncil.com.au/summit/nts-when-where/](https://techcouncil.com.au/summit/nts-when-where/) which contains:
+```text
+6.45PM-10.30PM: GALA DINNER, CARGO HALL – OVERSEAS PASSENGER TERMINAL
+```
+
+`Overseas Passenger Terminal`

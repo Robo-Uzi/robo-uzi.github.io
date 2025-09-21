@@ -1,0 +1,20 @@
+---
+layout: post
+title:  "K17 CTF 2025"
+date:   2025-09-21 10:36:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [discord (intro)](/K17-2025-discord/)
+- [dinner (OSINT)](/K17-2025-dinner/)
+- [radioactive (OSINT)](/K17-2025-radioactive/)
+- [tunnel (OSINT)](/K17-2025-tunnel/)
+- [smoothie (misc)](/K17-2025-smoothie/)
+- [phished (forensics)](/K17-2025-phished/)
+- [jumping (rev)](/K17-2025-jumping/)
+- [daily re (rev, web)](/K17-2025-daily-re/)
+- [el camel (crypto)](/K17-2025-el-camel/)
+- [pass me the salt (crypto)](/K17-2025-pass-me-the-salt/)

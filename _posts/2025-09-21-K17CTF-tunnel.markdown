@@ -1,0 +1,32 @@
+---
+layout: post
+title:  "tunnel"
+date:   2025-09-21 10:31:43 -0400
+author: robo.uzi
+tags: [ctf]
+permalink: /K17-2025-tunnel/
+---
+
+**Title:** tunnel
+
+**Category:** easy +osint
+
+**Description:** Legend has it that there is a tunnel that sprawls underneath UNSW's campus. It once was open to the public, but it is now heavily fortified. Even less known is that all the tunnellers used to hang out at the secret chamber along a long straight part of the tunnel where it widens for the distance of a small room.
+
+**Note**: Please answer with coordinates of the secret chamber rounded to 3 decimal places and wrap your answer with K17{}. For example, if you think that the chamber is located underneath the Eiffel Tower, please submit `K17{48.858,2.296}`.
+
+I start searching with duckduckgo, google, and startpage for `UNSW tunnel` and variations of that. After some time I use `filetype: pdf` in my searches and find two useful pdfs.
+
+I find [Kensington Campus Map](https://www.unswcollege.edu.au/content/dam/pdfs/unsw-college/2022-04-211206-Kensington-Campus-Map.pdf):
+
+![Alt text](/images/Kensington-Campus-Map.png)
+
+I also find [HS801 Contractor Safety Manual](https://www.unsw.edu.au/content/dam/pdfs/planning-assurance/safety/resources/2023-00-hs-documents/2021-06-HS801-Contractor-Safety-Manual-V2.2.pdf) which had a map of the tunnel:
+
+![Alt text](/images/service-tunnels-edited.png)
+
+Looking very closely at the map of the tunnel, I can see the room mentioned (circled in red). I go to google maps and find the coordinates. I honestly got pretty lucky as I got it correct on my first try, and you only got 10 guesses. It made it easy given I have both screenshots and could look at google maps at the same time. 
+
+[Google Maps Link](https://www.google.com/maps/@-33.9181486,151.2315367,2a,75y,351.61h,76.39t/data=!3m7!1e1!3m5!1sZbXJsVZD5RO_fzRnih_17w!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D13.608294894630745%26panoid%3DZbXJsVZD5RO_fzRnih_17w%26yaw%3D351.6078629392227!7i13312!8i6656?entry=ttu&g_ep=EgoyMDI1MDkxNy4wIKXMDSoASAFQAw%3D%3D) 
+
+`K17{-33.918,151.232}`
