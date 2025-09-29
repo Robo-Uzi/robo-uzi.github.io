@@ -1,0 +1,26 @@
+---
+layout: post
+title:  "Sunshine CTF 2025"
+date:   2025-09-29 13:24:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [Lunar Auth (web)](/sunshine-2025-lunar-auth/)
+- [Lunar Shop (web)](/sunshine-2025-lunar-shop/)
+- [Lunar File Invasion (web)](/sunshine-2025-lunar-file-invasion/)
+- [OK BOOMER (misc)](/sunshine-2025-ok-boomer/)
+- [BigMak (misc)](/sunshine-2025-bigmak/)
+- [Tribble with my Skin (misc)](/sunshine-2025-tribble-with-my-skin/)
+- [the poop challenge (misc)](/sunshine-2025-the-poop-challenge/)
+- [Pretty Delicious Food (forensics)](/sunshine-2025-pretty-delicious-food/)
+- [t0le t0le (forensics)](/sunshine-2025-t0le-t0le/)
+- [BASEic (rev)](/sunshine-2025-baseic/)
+- [Missioncritical1 (rev)](/sunshine-2025-missioncritical1/)
+- [Roman Romance (rev)](/sunshine-2025-roman-romance/)
+- [Palatine Pack (rev)](/sunshine-2025-palatine-pack/)
+- [Miami (I95)](/sunshine-2025-miami/)
+- [Plutonian Crypto (crypto)](/sunshine-2025-plutonian-crypto/)
+- [Hail Mary (scripting)](/sunshine-2025-hail-mary/)

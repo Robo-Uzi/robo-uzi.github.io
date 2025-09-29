@@ -1,0 +1,66 @@
+---
+layout: post
+title:  "t0le t0le"
+date:   2025-09-29 12:55:43 -0400
+author: robo.uzi
+tags: [ctf]
+permalink: /sunshine-2025-t0le-t0le/
+---
+
+**Title:** t0le t0le
+
+**Category:** forensics
+
+**Author:** oatzs
+
+**Description:** Our CCDC business guy made a really weird inject. He's just obsessed with that damn cat... there's nothing hiding in there, right?
+
+I get a docx file: 
+```shell
+file Team_5_-_Inject_72725.docx  
+Team_5_-_Inject_72725.docx: Microsoft Word 2007+  
+
+unzip Team_5_-_Inject_72725.docx -d extract_dir  
+Archive:  Team_5_-_Inject_72725.docx  
+ inflating: extract_dir/[Content_Types].xml     
+ inflating: extract_dir/_rels/.rels     
+ inflating: extract_dir/word/document.xml     
+ inflating: extract_dir/word/_rels/document.xml.rels     
+ inflating: extract_dir/word/footnotes.xml     
+ inflating: extract_dir/word/endnotes.xml     
+ inflating: extract_dir/word/header1.xml     
+ inflating: extract_dir/word/_rels/header1.xml.rels     
+extracting: extract_dir/word/media/image1.png     
+extracting: extract_dir/word/media/image2.png     
+extracting: extract_dir/word/media/image3.png     
+extracting: extract_dir/word/media/image4.png     
+ inflating: extract_dir/word/media/image5.emf     
+ inflating: extract_dir/word/embeddings/oleObject1.bin     
+extracting: extract_dir/word/media/image6.jpeg     
+extracting: extract_dir/word/media/image7.jpeg     
+ inflating: extract_dir/word/theme/theme1.xml     
+ inflating: extract_dir/word/settings.xml     
+ inflating: extract_dir/word/styles.xml     
+ inflating: extract_dir/word/webSettings.xml     
+ inflating: extract_dir/word/fontTable.xml     
+ inflating: extract_dir/docProps/core.xml     
+ inflating: extract_dir/docProps/app.xml
+```
+
+I see an interesting file: `extract_dir/word/embeddings/oleObject1.bin` (shortened output):
+```shell
+cat oleObject1.bin
+��ࡱ▒�>�F�CompObj������������LObjInfo����Ole10Native▒��������������������� 
+   �F  
+     OLE PackagPackage�9�q@�vroC:\Users\ardy\Downloads\vrosC:\Users\ardy\AppData\Local\Temp\{016E985C-CACE-4FD5-BE62-7088A89D6E7F}\{07D47D53-4E54-46B2-9C7A-31322E56717A}\vro%  
+Zmhhe2cweXJfZzB5cl96bF9vM3kwaTNxIX0=  
+rC:\Users\ardy\AppData\Local\Temp\{016E985C-CACE-4FD5-BE62-7088A89D6E7F}\{07D47D53-4E54-46B2-9C7A-31322E56717A}\vrovro:\Users\ardy\Downloads\vro
+```
+
+I get a base64 encoded string which then gets rot13 decoded:
+```shell
+echo -n 'Zmhhe2cweXJfZzB5cl96bF9vM3kwaTNxIX0=' | base64 -d  
+fha{g0yr_g0yr_zl_o3y0i3q!}
+```
+
+`sun{t0le_t0le_my_b3l0v3d!}`

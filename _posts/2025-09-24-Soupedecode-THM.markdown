@@ -225,7 +225,7 @@ SMB    10.10.120.64    445    DC01            Users
 ```
 Now I have read access on `backup`. 
 
-Login the read the share:
+Login and read the share:
 ```shell
 smbclient //soupedecode.local/backup -U file_svc  
 Password for [WORKGROUP\file_svc]:  
