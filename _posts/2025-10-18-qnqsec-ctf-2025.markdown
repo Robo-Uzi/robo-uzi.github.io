@@ -1,0 +1,28 @@
+---
+layout: post
+title:  "QnQSec CTF 2025"
+date:   2025-10-18 16:53:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [s3cr3ct_w3b (web)](/qnqsec-2025-s3cr3ct-w3b/)
+- [s3cr3ct_w3b revenge (web)](/qnqsec-2025-s3cr3ct-w3b-revenge/)
+- [QnQsec portal (web)](/qnqsec-2025-qnqsec-portal/)
+- [The Hidden Castle (osint)](/qnqsec-2025-the-hidden-castle/)
+- [The Company's channel (osint)](/qnqsec-2025-the-companys-channel/)
+- [The Company (osint)](/qnqsec-2025-the-company/)
+- [The Bird (osint)](/qnqsec-2025-the-bird/)
+- [SmartCoffee (hardware)](/qnqsec-2025-smartcoffee/)
+- [myLFSR? (crypto)](/qnqsec-2025-myLFSR/)
+- [Mandatory RSA (crypto)](/qnqsec-2025-mandatory-rsa/)
+- [John Cena (stego)](/qnqsec-2025-john-cena/)
+- [Echoes of the Unknown (stego)](/qnqsec-2025-echoes-of-the-unknown/)
+- [Catch Me (stego)](/qnqsec-2025-catch-me/)
+- [Baby Corruption (forensics)](/qnqsec-2025-baby-corruption/)
+- [Execution (forensics)](/qnqsec-2025-execution/)
+- [Baby_Reverse_Revenge_From_NHNC (reverse)](/qnqsec-2025-baby-reverse-revenge-from-NHNC/)
+- [baby_baby_reverse (reverse)](/qnqsec-2025-baby-baby-reverse/)
+- [HeartBroken (misc)](/qnqsec-2025-heartbroken/)
