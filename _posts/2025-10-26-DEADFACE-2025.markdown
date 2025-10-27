@@ -1,0 +1,18 @@
+---
+layout: post
+title:  "DEADFACE CTF 2025"
+date:   2025-10-26 21:16:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+These are series of challenges that all relate to each other. On each page there are multiple write ups. Each category relates to the same challenge files or instance:
+- [Hack the Night (web)](/hack-the-night/)
+- [Trojan Echoes (forensics)](/trojan-echoes/)
+- [Stolen Secrets (forensics)](/stolen-secrets/)
+- [Hostbuster (forensics, linux)](/hostbuster/)
+
+These are miscellaneous challenges (steganography, osint, sql, crypto, and pwn):
+- [Misc Challenges](/main-challenges/)
