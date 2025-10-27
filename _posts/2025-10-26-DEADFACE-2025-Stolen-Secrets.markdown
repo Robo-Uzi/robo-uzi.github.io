@@ -199,7 +199,7 @@ ___
 
 **Description:** UPDATE: If you're looking for a password, try applying sensitive information found in other challenges (i.e., passwords, keys, flags, etc). After DEADFACE compromised MyShare, they uploaded 2 files. One of these files is named in such a way that implies it’s meant to be an antivirus patch. Extract the flag from this file. Submit the flag as `deadface{flag}`. NOTE: `deadface{h1dd3n_c0mm$!!}` is NOT the flag. It's a leftover remnant that was supposed to have been removed. Use the ZIP file from **Stolen Secrets: The Source**.
 
-I start by following the tcp stream and copying the entire thing as raw. I run `xxd -r -p zip-please > zip-please.bin` and after trying to unzip I see this:
+I start by following the tcp stream and copying the entire thing as hex. I run `xxd -r -p zip-please > zip-please.bin` and after trying to unzip I see this:
 ```shell
 unzip zip-please.bin  
 Archive:  zip-please.bin  

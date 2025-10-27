@@ -21,7 +21,7 @@
 title: Robo.Uzi
 email: test
 description: >- # this means to ignore newlines until "baseurl:"
-  CTF and TryHackMe write-ups, plus maybe some useful resources!
+  CTF and TryHackMe write ups!
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: N/A
