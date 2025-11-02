@@ -59,3 +59,5 @@ tags: [Resources]
 - **[hacktricks AI](https://www.hacktricks.ai/)**: AI model trained for cybersecurity related content.
 
 - **[SecLists](https://github.com/danielmiessler/SecLists)**: Collection of wordlists for password cracking, fuzzing, and reconnaissance.
+
+- **[Encode emojis](https://emoji.paulbutler.org/?mode=encode)**: encode and decode text inside emojis.
