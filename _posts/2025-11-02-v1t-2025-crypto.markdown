@@ -1,0 +1,475 @@
+---
+layout: post
+title:  "v1t 2025 Crypto challenges"
+date:   2025-11-02 17:06:10 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /v1t-crypto/
+---
+* TOC
+{:toc}
+
+## Lost Some Binary
+
+**Category**: crypto
+
+**Description**: SOS we lost some binary sir!
+
+I get the file `Lost_Some_Binary.txt`:
+```shell
+cat Lost_Some_Binary.txt  
+01001000 01101001 01101001 01101001 00100000 01101101 01100001 01101110 00101100 01101000 01101111 01110111 00100000 01110010 00100000 01110101 00100000 00111111 01001001 01110011 00100000 01101001 01110100 00100000 00111010 00101001 00101001 00101001 00101001 01010010 01100001 01110111 01110010 00101101 01011110 01011110 01011011 01011101 00100000 00100000 01001100 01010011 01000010 01111011 00111110 00111100 01111101 00100001 01001100 01010011 01000010 01111110 01111110 01001100 01010011 01000010 01111110 01111110 00101101 00101101 00101101 01110110 00110001 01110100 00100000 00100000 01111011 00110001 00110011 00110101 00111001 00110000 00110000 01011111 00110001 00110011 00110011 00110111 00110000 01111101
+```
+
+I go to cyberchef and convert it from binary and get this string:
+```shell
+Hiii man,how r u ?Is it :))))Rawr-^^[]  LSB{><}!LSB~~LSB~~---v1t  {135900_13370}
+```
+LSB is a good hint and means least significant bit. 
+
+I run this python to get the flag:
+```python
+s = "Hiii man,how r u ?Is it :))))Rawr-^^[]  LSB{><}!LSB~~LSB~~---v1t  {135900_13370}"
+
+# extract the lsb of each characters ascii value
+bits = ''.join(str(ord(c) & 1) for c in s)
+
+# split into 8 bit chunks
+bytes_ = [bits[i:i+8] for i in range(0, len(bits), 8)]
+
+# convert each 8 bit chunk into a character and join them
+decoded = ''.join(chr(int(b, 2)) for b in bytes_ if len(b) == 8)
+print(decoded)
+```
+
+`v1t{LSB:>}`
+
+___
+
+## Misconfigured RSA
+
+**Category**: crypto
+
+**Description**: Oops i did it again!
+
+I get the file `misconfigured_RSA.txt`:
+```shell
+cat misconfigured_RSA.txt  
+n = 148900953097814724338206947679223698832179691968218755697733749707084556942286184505525791780949441847197006147827388400754499224336852575956050210608024912280019773833889546324355353746095214275985515374968532505153145975517881297436944244066461866248895871696012367810254055557824874852294865749524482337551  
+e = 65537  
+c = 107217087223013352864419426588613439434708031699522027786711684217439431898186052583896596846379575153070982123347045493427454234913154021933229641985591412104222934496019950746514726800406326146713516918611779367873873294259462206805554572977819244626333164240237423211396727885901436510649294574529712562954
+```
+
+I tried to factorize `n` on factordb and it did not work, but confirmed `n` is prime. `n` is being treated as a single prime number and not being factorized into `p` and `q`. 
+
+Run this python to get the flag:
+```python
+from Crypto.Util.number import inverse, long_to_bytes
+
+n = 148900953097814724338206947679223698832179691968218755697733749707084556942286184505525791780949441847197006147827388400754499224336852575956050210608024912280019773833889546324355353746095214275985515374968532505153145975517881297436944244066461866248895871696012367810254055557824874852294865749524482337551
+e = 65537
+c = 107217087223013352864419426588613439434708031699522027786711684217439431898186052583896596846379575153070982123347045493427454234913154021933229641985591412104222934496019950746514726800406326146713516918611779367873873294259462206805554572977819244626333164240237423211396727885901436510649294574529712562954
+
+phi = n - 1
+d = inverse(e, phi)
+m = pow(c, d, n)
+flag = long_to_bytes(m)
+print(flag)
+```
+
+`v1t{f3rm4t_l1ttl3_duck}`
+
+___
+
+## blank
+
+**Category**: crypto
+
+**Description**: blank (for real. no description)
+
+I get the file `txt`:
+```shell
+file txt  
+txt: ASCII text, with CRLF line terminators
+```
+
+There is nothing in the file. Only spaces and tabs. I confirm this by going to [https://www.babelstone.co.uk/Unicode/whatisit.html](https://www.babelstone.co.uk/Unicode/whatisit.html):
+```shell
+U+0020 : SPACE [SP]
+U+0020 : SPACE [SP]
+U+0020 : SPACE [SP]
+U+0009 : <control> CHARACTER TABULATION [TAB] {horizontal tabulation (HT); tab}
+U+0009 : <control> CHARACTER TABULATION [TAB] {horizontal tabulation (HT); tab}
+U+0009 : <control> CHARACTER TABULATION [TAB] {horizontal tabulation (HT); tab}
+U+0020 : SPACE [SP]
+shortened...
+```
+
+Interpret the spaces as `0` and the tabs as `1`. The python script that got the flag missed the first character, and is a horrible 300 line combination of if else statements so I wont include it here. 
+
+`v1t{1_c4nt_s33_4nyth1ng}`
+
+___
+
+## Shamir's Duck
+
+**Category**: crypto
+
+**Description**: Each duck carries a small piece of a hidden message — alone it’s useless, but together the pieces form the whole. The secret was split into 6 shares and distributed: every participant holds one little piece. No single person can reconstruct the secret, but if at least three people combine their pieces, the original message appears.
+
+I get the file `shares.txt`:
+```shell
+cat shares.txt  
+Bob-ef73fe834623128e6f43cc923927b33350314b0d08eeb386  
+Sang-2c17367ded0cd22e15220a2b2a6cede16e2ed64d1898bbad  
+Khoi-e05fd9646ff27414510dec2e46032469cd60d632606c8181  
+Long-0c4de736ced3f8412307729b8bea56cc6dc74abce06a0373  
+Dung-afe15ff509b15eb48b0e9d72fc2285094f6233ec98914312  
+Steve-cb1a439f208aa76e89236cb496abaf20723191c188e23f54
+```
+
+This is based on `Shamirs Secret Sharing`. I dont know anything about it so I look it up and find this:
+```shell
+## Overview of Shamir's Secret Sharing
+
+Shamirs Secret Sharing (SSS) is a cryptographic algorithm developed by Adi Shamir in 1979. It allows a secret to be divided into multiple parts, known as shares, which can be distributed among a group of participants. The secret can only be reconstructed when a minimum number of shares, called the threshold, are combined.
+
+### How It Works
+
+- Secret Division: The secret is mathematically divided into n shares.
+
+- Threshold Requirement: A minimum of k shares is needed to reconstruct the secret. If fewer than k shares are available, the secret remains secure.
+
+- Polynomial Interpolation: The shares are generated using polynomial equations. The secret is the constant term of the polynomial, and the other coefficients are random numbers.
+
+### Properties
+
+- Information-Theoretic Security: An attacker cannot reconstruct the secret without the required number of shares.
+
+- Flexibility: Shares can be added or removed without affecting the existing shares.
+
+- Minimal Size: Each share is no larger than the original secret.
+```
+So I know there are 6 shares and I need to recover the secret which is the constant term of the polynomial. 
+
+Run this script recover the secret and flag:
+```python
+import sympy
+
+p = sympy.nextprime(2**192)
+
+shares_hex = [
+'ef73fe834623128e6f43cc923927b33350314b0d08eeb386',
+'2c17367ded0cd22e15220a2b2a6cede16e2ed64d1898bbad',
+'e05fd9646ff27414510dec2e46032469cd60d632606c8181',
+'0c4de736ced3f8412307729b8bea56cc6dc74abce06a0373',
+'afe15ff509b15eb48b0e9d72fc2285094f6233ec98914312',
+'cb1a439f208aa76e89236cb496abaf20723191c188e23f54'
+]
+
+y = [int(h,16) for h in shares_hex]
+
+x = [1,2,3,4,5,6]
+
+def lagrange_zero(x_list, y_list, p):
+    n = len(x_list)
+    total = 0
+    for i in range(n):
+        term = y_list[i]
+        for j in range(n):
+            if j != i:
+                num = (0 - x_list[j]) % p
+                den = (x_list[i] - x_list[j]) % p
+                inv = pow(den, p-2, p)
+                term = (term * num * inv) % p
+        total = (total + term) % p
+    return total
+
+secret1 = lagrange_zero(x[0:3], y[0:3], p)
+
+secret3 = lagrange_zero([x[0],x[3],x[4]], [y[0],y[3],y[4]], p)
+
+print(f"Secret 1: {secret1}")
+
+print(f"Secret 3: {secret1}")
+
+secret = secret1
+
+b = secret.to_bytes((secret.bit_length() + 7) // 8, 'big')
+
+try:
+    print(b.decode('utf-8'))
+except:
+    print(b.hex())
+```
+
+Output:
+```shell
+python3 shamirs-secret.py  
+Secret 1: 1041157661389884291797995500850332298569345592670362167165  
+Secret 3: 1041157661389884291797995500850332298569345592670362167165  
+*v1t{555_s3cr3t_sh4r1ng}
+```
+It reconstructs the secret (we can see 1 and 3 are the same) and turns the integer secret into bytes and decodes as utf-8 to get the flag.
+
+`v1t{555_s3cr3t_sh4r1ng}`
+
+___
+
+## Modulo Mystery
+
+**Category**: crypto
+
+**Description**: Can you find the number?
+
+I get the files `flag.enc` and `modulo.py`:
+```shell
+cat flag.enc  
+16 49 14 21 7 48 49 15 6 48 44 10 12 49 20 0 23
+```
+
+```python
+import random  
+  
+inp = input("Enter plaintext: ")  
+  
+def encrypt(pt):  
+    key = random.randint(1, 100)  
+    results = [str(ord(ch) % key) for ch in pt]
+    print("Encrypted:", " ".join(results))  
+    with open('flag.enc', 'w') as f:  
+        f.write(" ".join(results))  
+return key  
+  
+k = encrypt(inp)  
+print("Key (for debug):", k)
+```
+
+I can brute force and find the flag with this script:
+```python
+from itertools import product
+
+enc = [16, 49, 14, 21, 7, 48, 49, 15, 6, 48, 44, 10, 12, 49, 20, 0, 23]
+
+for key in range(1, 101):
+    poss = []
+    for e in enc:
+        ps = []
+        for q in range(3):
+            o = e + q * key
+            if 32 <= o <= 126:
+                ps.append(chr(o))
+        poss.append(ps)
+
+    for combo in product(*poss):
+        s = ''.join(combo)
+        if (s.startswith('v1t{') and
+            s.endswith('}') and
+            all(c.isalnum() or c in '_{}' for c in s) and
+            not any(c.isupper() for c in s) and
+            sum(c.isdigit() for c in s) == 5):
+            print(f"[key={key}] {s}")
+```
+
+Output:
+```shell
+python3 solve.py  
+[key=51] v1t{m01u90_prdzf}  
+[key=51] v1t{m01u9c_pr1zf}  
+[key=51] v1t{m01u9c_prdz3}  
+[key=51] v1t{m01ul0_pr1zf}  
+[key=51] v1t{m01ul0_prdz3}  
+[key=51] v1t{m01ulc_pr1z3}  
+[key=51] v1t{m0du90_pr1zf}  
+[key=51] v1t{m0du90_prdz3}  
+[key=51] v1t{m0du9c_pr1z3}  
+[key=51] v1t{m0dul0_pr1z3}  
+[key=51] v1t{mc1u90_pr1zf}  
+[key=51] v1t{mc1u90_prdz3}  
+[key=51] v1t{mc1u9c_pr1z3}  
+[key=51] v1t{mc1ul0_pr1z3}  
+[key=51] v1t{mcdu90_pr1z3}
+```
+
+`v1t{m0dul0_pr1z3}`
+
+___
+
+## RandomStuff
+
+**Category**: crypto
+
+**Description**: PRNG
+
+I get a zip file with 2 python scripts. First script:
+```python
+from Crypto.Util.number import *  
+from hashlib import *  
+from Crypto.Cipher import AES  
+from Crypto.Util.Padding import *  
+part_1 = "s0me_r4nd0m_str1ng".encode()  
+  
+class LCG():  
+    def __init__(self, seed, a, c, m):  
+        self.seed = seed  
+        self.a = a  
+        self.c = c  
+        self.m = m  
+        self.state = seed  
+
+def next(self):  
+    self.seed = (self.a * self.seed ** 65537 + self.c) % m  
+return self.seed >> 20  
+
+a = getPrime(50)  
+c = getPrime(50)  
+m = getPrime(100)  
+seed = getRandomInteger(50)  
+  
+lcg = LCG(seed, a, c, m)  
+  
+key = sha256(long_to_bytes(seed)).digest()  
+enc = AES.new(key, AES.MODE_ECB).encrypt(pad(part_1, 16))  
+  
+  
+print(f"{enc = }")  
+print(f"{a = }")  
+print(f"{c = }")  
+print(f"{m = }")  
+print(f"{lcg.next() = }")  
+'''  
+enc = b'\xe6\x97\x9f\xb9\xc9>\xde\x1e\x85\xbb\xebQ"Ii\xda\'\x1f\xae\x19\x05M\x01\xe1kzS\x8fi\xf4\x8cz'  
+a = 958181900694223  
+c = 1044984108221161  
+m = 675709840048419795804542182249  
+lcg.next() = 176787694147066159797379  
+'''
+```
+
+Second script:
+```t
+def main():  
+    flag = bytearray(b"th4t_y0u_h4ve_t0_f1nd")  
+    length = len(flag)  
+  
+   for i in range(length):  
+       if i > 0:  
+           flag[i] ^= flag[i-1]  
+  
+       v = flag[i] & 0xFF  
+       v ^= (v >> 4)  
+       v &= 0xFF  
+       v ^= (v >> 3)  
+       v &= 0xFF  
+       v ^= (v >> 2)  
+       v &= 0xFF  
+       v ^= (v >> 1)  
+       v &= 0xFF  
+  
+       flag[i] = v  
+       print(f"{v:02x}", end="")  
+  
+if __name__ == "__main__":  
+   main()  
+  
+'''  
+6768107b1a357132741539783d6a661b5f3b  
+'''
+```
+
+Here is the script to recover the first part of the flag:
+```python
+from hashlib import sha256
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+
+# values from challenge
+enc = b'\xe6\x97\x9f\xb9\xc9>\xde\x1e\x85\xbb\xebQ"Ii\xda\'\x1f\xae\x19\x05M\x01\xe1kzS\x8fi\xf4\x8cz'
+a = 958181900694223
+c = 1044984108221161
+m = 675709840048419795804542182249
+R = 176787694147066159797379
+
+MAX_LOW_BITS = 1 << 20
+MAX_SEED0 = 1 << 50
+
+inva = pow(a, -1, m)
+d = pow(65537, -1, m-1)
+
+print("Starting search...".format(MAX_LOW_BITS))
+
+found = False
+for t in range(MAX_LOW_BITS):
+    seed1 = (R << 20) | t
+    rhs = (seed1 - c) * inva % m
+    seed0 = pow(rhs, d, m)
+    if seed0 >= MAX_SEED0:
+        continue
+
+    # derive AES key from seed0
+    blen = (seed0.bit_length() + 7) // 8
+    seed_bytes = seed0.to_bytes(blen, "big")
+    key = sha256(seed_bytes).digest()
+
+    try:
+        cipher = AES.new(key, AES.MODE_ECB)
+        pt = unpad(cipher.decrypt(enc), 16)
+    except ValueError:
+        continue
+    except Exception:
+        continue
+
+    print("Found seed:", seed0)
+    print("decrypted plaintext:", pt)
+    found = True
+    break
+
+if not found:
+    print("No valid seed found (unexpected).")
+```
+
+Output:
+```shell
+python3 crypto2.py  
+Starting search...  
+Found seed: 529909332019471  
+decrypted plaintext: b'v1t{Pseud0_R4nd0m_G3ner4t0r'
+```
+I can see the seed in the first script is unknown but only 50 bits so I can brute force it and rebuild the AES key. 
+
+For the second part of the flag I run this script:
+```python
+hexs = "6768107b1a357132741539783d6a661b5f3b"
+b = bytes.fromhex(hexs)
+
+def forward(x):
+    v = x & 0xFF
+    v ^= (v >> 4); v &= 0xFF
+    v ^= (v >> 3); v &= 0xFF
+    v ^= (v >> 2); v &= 0xFF
+    v ^= (v >> 1); v &= 0xFF
+    return v
+
+inv = {forward(x): x for x in range(256)}
+
+orig = []
+for i, s in enumerate(b):
+    xprime = inv[s]
+    if i == 0:
+        orig_byte = xprime
+    else:
+        orig_byte = xprime ^ b[i-1]
+    orig.append(orig_byte)
+
+decoded = bytes(orig).decode()
+print(decoded)
+```
+
+Output:
+```shell
+python3 crypto3.py  
+_1s_n0t_th4t_h4rd}
+```
+In the original second script each byte of the flag is first XORed with the previous byte (except the first). Then each byte goes through a series of bit operations (shifting and XORing with itself) and the result is printed as a sequence of hex bytes. The solve script does this exactly in reverse.
+
+`v1t{Pseud0_R4nd0m_G3ner4t0r_1s_n0t_th4t_h4rd}`

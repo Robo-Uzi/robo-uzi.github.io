@@ -1,0 +1,16 @@
+---
+layout: post
+title:  "v1t CTF 2025"
+date:   2025-11-02 16:52:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [Web challenges](/v1t-web/)
+- [Pwn challenges](/v1t-pwn/)
+- [Cryptography challenges](/v1t-crypto/)
+- [Reverse engineering challenges](/v1t-rev/)
+- [OSINT challenges](/v1t-osint/)
+- [Misc challenges](/v1t-misc/)

