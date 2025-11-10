@@ -1,0 +1,61 @@
+---
+layout: post
+title:  "Buckeye 2025 misc challenges"
+date:   2025-11-10 18:14:10 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /buckeye-misc/
+---
+* TOC
+{:toc}
+
+## rscryptodome
+
+**Category**: misc
+
+**Description**: What do you think of my totally secure [crypto library](https://github.com/smederij-bctf/rscryptodome-bctf)? 
+`ncat --ssl rscryptodome.challs.pwnoh.io 1337`
+
+I get the challenge files. Here is the rust server `main.rs`:
+```rust
+use rscryptodome_bctf::{constant_time_eq, sha256sum};  
+use std::env;  
+use std::io::{self, Write};  
+  
+fn main() {  
+let flag = env::var("FLAG").expect("FLAG environment variable not set");  
+  
+let flag_hash_hex = sha256sum(flag.as_bytes());  
+  
+print!("Enter the hash of the flag: ");  
+io::stdout().flush().expect("Failed to flush stdout");  
+  
+let mut user_input = String::new();  
+io::stdin()  
+    .read_line(&mut user_input)  
+    .expect("Failed to read line");  
+  
+let user_input = user_input.trim();  
+  
+if constant_time_eq(&flag_hash_hex, user_input.as_bytes()) {  
+    println!("Correct! {}", flag);  
+} else {  
+    println!("Incorrect hash.");  
+}  
+}
+```
+I can see they are using the custom crypto library `rscryptodome_bctf`. I look for the source code of this library on [https://docs.rs](https://docs.rs). 
+
+After reading the source code I find a backdoor on lines `107-117` at:
+[https://docs.rs/rscryptodome-bctf/latest/src/rscryptodome_bctf/lib.rs.html#107-117](https://docs.rs/rscryptodome-bctf/latest/src/rscryptodome_bctf/lib.rs.html#107-117). 
+
+Connect to the server and give it that hash:
+```shell
+ncat --ssl rscryptodome.challs.pwnoh.io 1337  
+Enter the hash of the flag: eb7c0cedf904251a6d819b74c1b40c94  
+Correct! bctf{1_c4n7_b3l13v3_7h3r3_4r3_b4ckd00r5_1n_my_cryp70_l1br4ry}
+```
+
+`bctf{1_c4n7_b3l13v3_7h3r3_4r3_b4ckd00r5_1n_my_cryp70_l1br4ry}`
+
+___
