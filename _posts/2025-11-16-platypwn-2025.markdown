@@ -1,0 +1,16 @@
+---
+layout: post
+title:  "Platypwn CTF 2025"
+date:   2025-11-16 12:36:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [Quark (web)](/platypwn-quark/)
+- [Strin-GO-Matic (web)](/platypwn-strin-go-matic/)
+- [HTTP/1 must die (web)](/platypwn-http-1-must-die/)
+- [Operation: Lost Data? (forensics)](/platypwn-operation-lost-data/)
+- [Flag Submission System (OSINT)](/platypwn-flag-submission-system/)
+- [Thanks (blockchain)](/platypwn-thanks/)
