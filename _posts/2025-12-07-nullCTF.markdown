@@ -10,7 +10,7 @@ tags: [CTF]
 
 - [Codename Neigh (web)](/nullCTF-codename-neigh/)
 - [Codename Neigh 2 (web)](/nullCTF-codename-neigh-2/)
-- [Nest Jason (web)](/nullCTF-next-jason/)
+- [Next Jason (web)](/nullCTF-next-jason/)
 - [What does the fox say? (misc)](/nullCTF-what-does-the-fox-say/)
 - [Reservation (misc)](/nullCTF-reservation/)
 - [iuesbitaipsi (forensics)](/nullCTF-iuesbitaipsi/)
