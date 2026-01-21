@@ -1,0 +1,256 @@
+---
+layout: post
+title:  "ReM3"
+date:   2026-01-21 15:26:10 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /knightctf-2026-ReM3/
+---
+
+**Title**: ReM3
+
+**Author**: NomanProdhan
+
+**Category**: Rev
+
+**Description**: Reverse me if you can...
+
+I get the binary:
+```shell
+file rem3.ks  
+rem3.ks: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=06bd352e364de89760cbc2e165221d8fb3f98b50, for GNU/Linux 4.4.0, stripped
+```
+
+`strings` reveals some fake flags:
+```shell
+strings rem3.ks | grep KCTF  
+=== KCTF Reverse Challenge ===  
+KCTF{fake_flag_for_reversers}  
+KCTF{hash_passes_but_fake!!!}  
+KCTF{str1ngs_lie_dont_trust!}
+
+./rem3.ks  
+=== KCTF Reverse Challenge ===  
+Enter flag: KCTF{fake_flag_for_reversers}  
+Congrats — you got a flag! But... not sure you'll get points for it :)  
+KCTF{fake_flag_for_reversers}
+```
+
+I put the binary in ghidra. Here is the "main" logic:
+```d
+
+undefined8 FUN_001010c0(void)
+
+{
+  int iVar1;
+  char *pcVar2;
+  size_t sVar3;
+  long lVar4;
+  undefined8 uVar5;
+  long in_FS_OFFSET;
+  undefined4 local_158;
+  undefined4 uStack_154;
+  undefined4 uStack_150;
+  undefined8 uStack_143;
+  undefined4 local_118;
+  undefined4 uStack_114;
+  undefined4 uStack_110;
+  undefined8 uStack_103;
+  long local_10;
+  
+  local_10 = *(long *)(in_FS_OFFSET + 0x28);
+  puts("=== KCTF Reverse Challenge ===");
+  printf("Enter flag: ");
+  pcVar2 = fgets((char *)&local_118,0x100,stdin);
+  if (pcVar2 == (char *)0x0) {
+    uVar5 = 1;
+    goto LAB_001011e6;
+  }
+  sVar3 = strcspn((char *)&local_118,"\r\n");
+  *(undefined *)((long)&local_118 + sVar3) = 0;
+  if (sVar3 == 0x1d) {
+    FUN_00101380();
+    iVar1 = memcmp(&local_118,"KCTF{str1ngs_lie_dont_trust!}",0x1d);
+    if (iVar1 == 0) {
+      puts(&DAT_00102028);
+      puts("KCTF{str1ngs_lie_dont_trust!}");
+    }
+    else {
+      lVar4 = FUN_00101470(&local_118);
+      if (lVar4 == -0x18905c2545a290c6) {
+        puts(&DAT_00102028);
+        puts("KCTF{hash_passes_but_fake!!!}");
+      }
+      else {
+        local_158 = local_118;
+        uStack_154 = uStack_114;
+        uStack_150 = uStack_110;
+        uStack_143 = uStack_103;
+        FUN_001014c0(&local_158);
+        iVar1 = FUN_00101400(&local_158,&DAT_00102160,&DAT_00102150,&DAT_00102140);
+        if (iVar1 == 0) {
+          iVar1 = FUN_00101400(&local_158,&DAT_00102130,&DAT_00102120,&DAT_00102110);
+          if (iVar1 == 0) goto LAB_001011d8;
+          puts(&DAT_00102028);
+          puts("KCTF{fake_flag_for_reversers}");
+        }
+        else {
+          puts("Success! Real flag accepted.");
+        }
+      }
+    }
+  }
+  else {
+LAB_001011d8:
+    puts("Failed!");
+  }
+  uVar5 = 0;
+LAB_001011e6:
+  if (local_10 == *(long *)(in_FS_OFFSET + 0x28)) {
+    return uVar5;
+  }
+                    /* WARNING: Subroutine does not return */
+  __stack_chk_fail();
+}
+```
+
+I find the function `FUN_001014c0` transforms the flag using stateful encryption:
+```d
+void FUN_001014c0(long param_1)
+
+{
+  char cVar1;
+  byte bVar2;
+  byte bVar3;
+  byte bVar4;
+  sbyte sVar5;
+  long lVar6;
+  int iVar7;
+  char cVar8;
+  byte bVar9;
+  
+  bVar9 = 0;
+  cVar8 = '\0';
+  iVar7 = -0x3d;
+  lVar6 = 0;
+  do {
+    sVar5 = (sbyte)(((uint)lVar6 & 7) << 3);
+    cVar1 = (char)lVar6;
+    bVar2 = (char)(0x2f910ed35ca71942 >> sVar5) + cVar8 ^ *(byte *)(param_1 + lVar6);
+    cVar8 = cVar8 + '\x1d';
+    bVar4 = (byte)(0x6a124de908b17733 >> (cVar1 * '\b' + 0x10U & 0x38)) & 7;
+    bVar3 = (byte)(0x6a124de908b17733 >> sVar5) ^ bVar9;
+    bVar9 = bVar9 + 0x11;
+    bVar3 = (bVar2 << bVar4 | bVar2 >> 8 - bVar4) + (byte)iVar7 ^ bVar3;
+    bVar4 = (byte)iVar7 & 7;
+    bVar4 = bVar3 >> bVar4 | bVar3 << 8 - bVar4;
+    *(byte *)(param_1 + lVar6) = bVar4;
+    lVar6 = lVar6 + 1;
+    iVar7 = (uint)bVar4 +
+            ((uint)(0x2f910ed35ca71942 >> (cVar1 * '\b' + 0x18U & 0x38)) ^ 0xffffffa5) + iVar7;
+  } while (lVar6 != 0x1d);
+  return;
+}
+```
+It builds the encrypted target from `DAT_00102160`, `DAT_00102168`, `DAT_00102150`, and `DAT_00102140`. Concatenating these values will give me the 29 byte encrypted target used for comparison.
+
+Solve script:
+```python
+#!/usr/bin/env python3
+
+from typing import List
+
+FLAG_LEN = 0x1D  # 29 bytes
+
+CONST_A = 0x2F910ED35CA71942
+CONST_B = 0x6A124DE908B17733
+
+TARGET = bytes.fromhex(
+    "dc 6b bb 4d fd 25 e4 7e"
+    "c3 26"
+    "f5 72 ab 96 fc 8d 55 10 93 c1"
+    "fd 81 46 5b 7e 33 83 8f 2f"
+)
+
+PRINTABLE = range(0x20, 0x7F)
+
+
+def rol8(value: int, shift: int) -> int:
+    shift &= 7
+    return ((value << shift) | (value >> (8 - shift))) & 0xFF
+
+
+def ror8(value: int, shift: int) -> int:
+    shift &= 7
+    return ((value >> shift) | (value << (8 - shift))) & 0xFF
+
+
+def encrypt_in_place(buf: bytearray) -> None:
+
+    rolling_xor = 0               # bVar9
+    rolling_add = 0               # cVar8
+    signed_accumulator = -0x3D    # iVar7 (needs to stay signed int)
+
+    for index in range(FLAG_LEN):
+        shift = ((index & 7) << 3)
+
+        # mix input byte
+        const_byte = (CONST_A >> shift) & 0xFF
+        mixed = (const_byte + rolling_add) & 0xFF
+        mixed ^= buf[index]
+
+        rolling_add = (rolling_add + 0x1D) & 0xFF
+
+        # dynamic rotation
+        rot_amount = (CONST_B >> ((index * 8 + 0x10) & 0x38)) & 7
+
+        xor_mask = ((CONST_B >> shift) & 0xFF) ^ rolling_xor
+        rolling_xor = (rolling_xor + 0x11) & 0xFF
+
+        rotated = rol8(mixed, rot_amount)
+        combined = (rotated + (signed_accumulator & 0xFF)) & 0xFF
+        combined ^= xor_mask
+
+        # final rotation
+        final_rot = (signed_accumulator & 0xFF) & 7
+        output = ror8(combined, final_rot)
+        buf[index] = output
+
+        # update signed accumulator
+        acc_const = (CONST_A >> ((index * 8 + 0x18) & 0x38)) & 0xFF
+        signed_accumulator += output + (acc_const ^ 0xA5)
+
+
+def recover_flag() -> str:
+    known = bytearray(b"KCTF{")
+
+    for pos in range(len(known), FLAG_LEN):
+        for ch in PRINTABLE:
+            trial = known + bytes([ch]) + b"\x00" * (FLAG_LEN - pos - 1)
+            buf = bytearray(trial)
+
+            encrypt_in_place(buf)
+
+            if buf[:pos + 1] == TARGET[:pos + 1]:
+                known.append(ch)
+                print(known.decode(errors="ignore"))
+                break
+        else:
+            raise RuntimeError(f"No valid byte at position {pos}")
+
+    return known.decode()
+
+
+if __name__ == "__main__":
+    flag = recover_flag()
+    print("\nFLAG:", flag)
+```
+
+```shell
+./rem3.ks  
+=== KCTF Reverse Challenge ===  
+Enter flag: KCTF{w3Lc0m3_T0_tHE_r3_w0rLD}  
+Success! Real flag accepted.
+```
+
+`KCTF{w3Lc0m3_T0_tHE_r3_w0rLD}`

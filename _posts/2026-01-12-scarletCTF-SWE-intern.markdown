@@ -15,7 +15,7 @@ permalink: /scarletCTF-swe-intern/
 
 **Description**: Last week we fired an intern at Girlie Pop INC for stealing too much food from the office. It seems they didn't know much about secure software development either... [https://girly.ctf.rusec.club](https://girly.ctf.rusec.club)
 
-First I found that `https://girly.ctf.rusec.club/view?page=../../../../etc/passwd` works (as well as `https://girly.ctf.rusec.club/view?page=/etc/pass`). Things line `/proc/self/mountinfo` are inaccessible.
+First I found that `https://girly.ctf.rusec.club/view?page=../../../../etc/passwd` works (as well as `https://girly.ctf.rusec.club/view?page=/etc/pass`). Things like `/proc/self/mountinfo` are inaccessible.
 
 On `https://girly.ctf.rusec.club/view?page=../../../../app/app.py`:
 ```python
