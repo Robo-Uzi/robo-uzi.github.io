@@ -59,21 +59,7 @@
           </ul>
         </div>
 
-        <!-- Resources -->
-        <div style="flex: 1; min-width: 250px;">
-          <h3>Resources</h3>
-          <ul>
-          {% for post in site.posts %}
-            {% if post.title contains "Resources" %}
-              <li>
-                <a href="{{ post.url }}">{{ post.title }}</a><br>
-                <small>{{ post.date | date: "%b %-d, %Y" }}</small>
-              </li>
-            {% endif %}
-          {% endfor %}
-          </ul>
-        </div>
-      </div>
+
       {% else %}
         {{ content }}
       {% endif %}
