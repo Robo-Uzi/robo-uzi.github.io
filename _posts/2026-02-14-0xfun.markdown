@@ -1,0 +1,17 @@
+---
+layout: post
+title:  "0xFun CTF 2026"
+date:   2026-02-14 16:05:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [Web Challenges](/0xfun-2026-web-challenges/)
+- [Forensics Challenges](/0xfun-2026-forensics-challenges/)
+- [Misc Challenges](/0xfun-2026-misc-challenges/)
+- [Crypto Challenges](/0xfun-2026-crypto-challenges/)
+- [Reverse Challenges](/0xfun-2026-reverse-challenges/)
+- [OSINT Challenges](/0xfun-2026-osint-challenges/)
+- [Pwn Challenges](/0xfun-2026-pwn-challenges/)
