@@ -1,0 +1,15 @@
+---
+layout: post
+title:  "BITSCTF 2026"
+date:   2026-02-22 16:05:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [Web Challenges](/BITSCTF-2026-web-challenges/)
+- [Misc Challenges](/BITSCTF-2026-misc-challenges/)
+- [Forensics Challenges](/BITSCTF-2026-forensics-challenges/)
+- [Crypto Challenges](/BITSCTF-2026-crypto-challenges/)
+- [Reverse Challenges](/BITSCTF-2026-reverse-challenges/)
