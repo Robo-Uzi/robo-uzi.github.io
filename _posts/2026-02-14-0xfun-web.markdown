@@ -380,7 +380,7 @@ if __name__ == '__main__':
     print('listening on port 5000')
     app.run(host='0.0.0.0', port=5000)
 ```
-They do `is_ip_allowed(url)` in both `/register` and `/trigger` so DNS is resolved each time. This creates a race condition between the two resolutions. 
+They do `is_ip_allowed(url)` in both `/register` and `/trigger` so DNS is resolved each time.
 
 I go to [https://lock.cmpxchg8b.com/rebinder.html](https://lock.cmpxchg8b.com/rebinder.html) to make a dns rebinding url like this: `01020304.ac110001.rbndr.us`. 
 
@@ -432,7 +432,7 @@ Attempt 12: 400
 Attempt 13: 200  
 SUCCESS! Response: {"response":"0xfun{dns_r3b1nd1ng_1s_sup3r_c00l!_ff4bd67cd1}","status":200,"url":"http://01020304.7f000001.rbndr.us:5001/flag"}
 ```
-Successful SSRF using DNS rebinding exploiting a time-of-check time-of-use race condition!
+Successful SSRF using DNS rebinding!
 
 `0xfun{dns_r3b1nd1ng_1s_sup3r_c00l!_ff4bd67cd1}`
 
