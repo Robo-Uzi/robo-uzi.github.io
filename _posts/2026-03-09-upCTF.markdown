@@ -1,0 +1,22 @@
+---
+layout: post
+title:  "upCTF 2026"
+date:   2026-03-09 17:31:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [0day on ipaddress (web)](/upCTF-2026-0day-on-ipaddress/)
+- [Microsoft Axel (web)](/upCTF-2026-Microsoft-Axel/)
+- [Post Builder (web)](/upCTF-2026-Post-Builder/)
+- [Left Behind (OSINT)](/upCTF-2026-Left-Behind/)
+- [Locked Temple (rev)](/upCTF-2026-Locked-Temple/)
+- [Inconspicuous Program (rev)](/upCTF-2026-Inconspicuous-Program/)
+- [Old Calculator (rev)](/upCTF-2026-Old-Calculator/)
+- [Jailed (misc)](/upCTF-2026-Jailed/)
+- [Deoxyribonucleic acid (misc)](/upCTF-2026-Deoxyribonucleic-acid/)
+- [BluPage (misc)](/upCTF-2026-BluPage/)
+- [Get off the ISS (misc)](/upCTF-2026-Get-off-the-ISS/)
+- [Happy new year (misc)](/upCTF-2026-Happy-new-year/)
