@@ -1,0 +1,15 @@
+---
+layout: post
+title:  "UTCTF 2026"
+date:   2026-03-14 20:35:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [Web Challenges](/UTCTF-2026-web/)
+- [Misc Challenges](/UTCTF-2026-misc/)
+- [Forensics Challenges](/UTCTF-2026-forensics/)
+- [Cryptography challenges](/UTCTF-2026-crypto/)
+- [Binary Exploitation](/UTCTF-2026-binex/)

