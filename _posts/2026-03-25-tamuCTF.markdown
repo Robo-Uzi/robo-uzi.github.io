@@ -1,0 +1,13 @@
+---
+layout: post
+title:  "tamuCTF 2026"
+date:   2026-03-25 20:09:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+
+- [Web Challenges](/tamuCTF-2026-web/)
+- [Crypto Challenges](/tamuCTF-2026-crypto/)
+- [Misc Challenges](/tamuCTF-2026-misc/)
