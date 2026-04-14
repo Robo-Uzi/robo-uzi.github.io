@@ -1,0 +1,19 @@
+---
+layout: post
+title:  "UMass CTF 2026"
+date:   2026-04-13 18:50:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+
+- [Brick by Brick (web)](/UMassCTF-2026-brick-by-brick/)
+- [BrOWSER BOSS FIGHT (web)](/UMassCTF-2026-browser-boss-fight/)
+- [The Block City Times (web)](/UMassCTF-2026-the-block-city-times/)
+- [ORDER66 (web)](/UMassCTF-2026-order66/)
+- [Brick by Brick (hardware)](/UMassCTF-2026-brick-by-brick-hardware/)
+- [Ninja-Nerds (forensics)](/UMassCTF-2026-ninja-nerds/)
+- [Click Here For Free Bricks (forensics)](/UMassCTF-2026-click-here-for-free-bricks/)
+- [The Accursed Lego Bin (cryptography)](/UMassCTF-2026-the-accursed-lego-bin/)
+- [Batcave Bitflips (reverse engineering)](/UMassCTF-2026-batcave-bitflips/)
+- [Son of a Sith... (OSINT)](/UMassCTF-2026-son-of-a-sith/)
+- [Take a Slice (misc)](/UMassCTF-2026-take-a-slice/)
