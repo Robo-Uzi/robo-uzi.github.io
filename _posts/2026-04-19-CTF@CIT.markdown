@@ -1,0 +1,15 @@
+---
+layout: post
+title:  "CTF@CIT 2026"
+date:   2026-04-19 16:58:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+
+- [Steganography Challenges](/CTF@CIT-2026-stego/)
+- [Forensics Challenges](/CTF@CIT-2026-forensics/)
+- [Web Challenges](/CTF@CIT-2026-web/)
+- [Miscellaneous Challenges](/CTF@CIT-2026-misc/)
+- [Cryptography Challenges](/CTF@CIT-2026-crypto/)
+- [Reverse Engineering Challenges](/CTF@CIT-2026-rev/)
+- [OSINT Challenge](/CTF@CIT-2026-osint/)

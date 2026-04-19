@@ -1,0 +1,125 @@
+---
+layout: post
+title:  "Cryptography Challenges"
+date:   2026-04-19 16:59:00 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /CTF@CIT-2026-crypto/
+---
+* TOC
+{:toc}
+
+## Brainiac
+
+**Author**: elemental
+
+**Category**: Crypto
+
+**Description**: SHA1: `33746b3052f748a9d41f030d2be4f196d02453cb`. FLAG FORMAT: `CIT{string}`.
+
+I get the challenge file:
+```shell
+sha1sum challenge.txt  
+33746b3052f748a9d41f030d2be4f196d02453cb  challenge.txt  
+
+cat challenge.txt  
+++++++++++[>+>+++>+++++++>++++++++++<<<<-]>>>---.++++++.+++++++++++.>+++++++++++++++++++++++.<+++.+++++++++++++++++.<++++++++++++++++++++++++++++++++++.>>-------.<---------.++++++++++.+++++.---------------.>.<+++++++++.<-------------.>---------.>+++.<<---.>>-----.------.<+++++.-----.>---.<<------------.>.>+++++++++++.<+++++++++.<+++++++++++++.>>-.<---------.>-------.<<+++++++++++++++.>>++.-------.++++++++++++++.<<.>++++++++.<-------------.>>++++++++.
+```
+
+This is code written in `brainfuck`. I run it on [https://www.dcode.fr/brainfuck-language](https://www.dcode.fr/brainfuck-language) and get the flag.
+
+`CIT{Wh@t_in_th3_w0rld_i$_th1s_l@ngu@g3}`
+
+___
+
+## The Onion
+
+**Author**: elemental
+
+**Category**: Crypto
+
+**Description**: Can you peel back the layers? SHA1: `6ca8b4ae8d7317b27f564bc962a20b3e6fb49c72` NOTE: The answer you get will not have the CIT{} wrapper, make sure you add it to the final answer. FLAG FORMAT: `CIT{string}`
+
+I get the challenge file:
+```shell
+sha1sum challenge2.txt  
+6ca8b4ae8d7317b27f564bc962a20b3e6fb49c72  challenge2.txt  
+
+cat challenge2.txt  
+Vm0wd2QyUXlVWGxWV0d4V1YwZDRWMVl3WkRSWFJteFZVMjA1VjAxV2JETlhhMk0xVmpGYWMySkVUbGhoTVVwVVZtcEdTMk15U2tWVWJHaG9UVlZ3VlZadGNFSmxSbGw1VTJ0V1ZXSkhhRzlVVmxaM1ZsWmFkR05GZEZSTlZUVkpWbTEwVjFWdFNsWlhiRkpYWVd0d2RscFdXbUZrUjFaSFYyMTRVMkpIZHpGV2EyUXdZekpHYzFOdVVsWmhlbXhoVm1wT2IyRkdjRmRYYlVaclVsUkdWbFpYZUhkV01ERkZVbFJHVjJFeVVYZFpla3BIWXpGT2RWVnNXbWhsYlhob1ZtMXdUMVV5UmtkV1dHaFlZbFZhY1ZadGRHRk5SbFowWlVoa1YwMUVSbGRaTUZaM1ZqSktWVkpZWkZwbGEzQklXWHBHVDJSV1duTlRiV3hUVFcxb1dsWXhaRFJpTWtsM1RVaG9XR0pIVWxsWmJGWmhZMnhXYzFWclpGZGlSbkJaV2xWYVQxWlhTbFpqUldSYVRVWndlbFpxUm1GT2JFWlpZVVprVTFKWVFrbFdiWEJIVkRGa1YyTkZaR2hTTW5oVVZGY3hiMWRzV1hoYVJGSnBUV3RzTlZadE5VOVdiVXBIVjJ4U1dtSkhhRlJXTUZwVFZqSkdSbFJzVG1sU2JrSmFWMnhXYjJFeFdYZE5WVlpUWVRGd1YxbHJXa3RTUmxweFUydGFiRlpzU2xwWlZWcGhZVWRGZUdOR2FGaGlSbkJvVmtSS1QyUkdUbkphUmxKcFZqSm9lbGRYZUc5aU1XUlhWMWhvV0dKWVVrOVZiVEUwVjBaYVIyRkhPV2hpUlhBd1dWVm9UMVp0Um5KVGJXaGFUVlp3ZWxreWVHdGtSa3AwWlVaa2FWWnJiekZXYlhCS1RWZEZlRmRZWkU1V1ZscFVXV3RrVTFsV1VsWlhibVJzWWtad2VGVnRNVWRVTWtwR1YyeHdXbFpXY0doWmEyUkdaV3hHY21KR1pHbFhSVXBKVm10U1MxVXhXWGhXYmxaV1lsaENWRmxZY0ZkWFZscFlZMFU1YVUxWFVucFdNV2h2V1ZaS1IxTnVRbFZXYkhCWVZGUkdVMVp0UmtoUFZtUk9WakZLU2xkV1ZtRmpNV1IwVTJ0a1dHSlhhR0ZVVmxwM1pXeHJlVTFWWkZOaVJrcDZWa2N4YzFVeVNuSlRiVVpYVFc1b1dGbHFTa1psUm1SWldrVTFXRkpZUWxwV2JYUlhaREZrUjJKSVRtaFNhelZQVkZaYWQyVkdWWGxrUjBacFVtdHNNMVJzVm5kV01ERnhVbXRvVjFaRldreFdha3BQVWxaa2MxcEhiRmhTVlhCS1ZtMTBVMU14VlhoWFdHaFlZbXhhVjFsc1pHOVdSbXhaWTBaa2JHSkhVbGxhVldNMVlWVXhXRlZyYUZkTmFsWlVWa2Q0VDFOSFJrZFJiRnBwVmtWVmQxWnRjRWRWTVZwMFVtdG9VRll5YUZoWlZFNURUbXhrVlZGdFJtcE5WMUl3VlRKMGExZEhTbGhoUm1oYVZrVmFNMVpyV21GalZrcDFXa1pPVGxacmIzZFhiRlpyWXpGVmVWTnNiRnBOTW1oWVdWUkdkMkZHV2xWU2JGcHNVbTFTTVZVeWN6RlhSa3BaVVd4c1dGWnRVVEJhUkVaYVpVWmtkVkpzVm1sV1IzaFFWa1phWVdReVZrZFdibEpPVmxkU1ZsUlhkSGRTTVd0M1YyNWtXRkl3VmpSWk1GSlBWMnhhV0ZWclpHRldNMmhJV1RJeFMxSXhjRWhpUm1oVFZsaENTMVp0TVRCVk1VbDVVbGhvV0ZkSGVGWlpWRVozWVVaV2NWTnRPVmRTYkVwWlZHeGpOVll4V25OalJXaFlWa1UxZGxsV1ZYaFhSbFp5WVVaa1RtRnNXbFZXYTJRMFdWWkplRlJ1VWxCV2JGcFlWRlJHUzA1c1draGtSMFpYWWxaYVdWWlhkRzloTVVsNVlVaENWbUpIYUVSV01WcGhZMVpPY1ZWc1drNVdNVWwzVmxkNGIyTXlSa2RUYkdSVVlsVmFhRlpxVGxOaFJteFdWMjVLYkZKdFVubGFSV1F3VlRKRmVsRnFXbGRpUjFFd1dWUktSMWRHU2xsYVIzQlRWak5vV1ZkWGVHOVJNVTE0WTBaYVYxZEhhRlZWYlhSM1pWWmtjbGRzVGxoU2EydzFXVlZhZDFkR1dqWlJhbEpWWVRGd1lWcFZXbGRqTVhCSVVteE9iR0pZYUZGV2ExcGhXVmRSZVZaclpGZGliRXB5Vld0V1MySXhiRmxqUldSc1ZteEtlbFp0Tld0V01ERkZVbXBHV2xaWGFFeFdha3BIWTJ4a2NtVkdaR2hoTTBKUlZsUkNWazVXV1hoalJXUmhVbFJXVDFWc2FFTlRNVnB4VW0xR1ZrMVZNVFJXVnpWVFZqSktTRlZzV2xwaVdGSXpXVlZhVjJSRk1WZFViWEJUWWtad05GWlhNVEJOUmxsNFYyNU9hbEpYYUZoV2FrNVRWRVpzVlZGWWFGTldhM0I2VmtkNFlWVXlTa1pYV0hCWFZsWndSMVF4V2tOVmJFSlZUVVF3UFE9PQ==
+```
+
+Base64 decode 15 times to get an MD5 hash:
+```shell
+echo "Vm0wd2QyUXlVWGxWV0d4V1YwZDRWMVl3WkRSWFJteFZVMjA1VjAxV2JETlhhMk0xVmpGYWMySkVUbGhoTVVwVVZtcEdTMk15U2tWVWJHaG9UVlZ3VlZadGNFSmxSbGw1VTJ0V1ZXSkhhRzlVVmxaM1ZsWmFkR05GZEZSTlZUVkpWbTEwVjFWdFNsWlhiRkpYWVd0d2RscFdXbUZrUjFaSFYyMTRVMkpIZHpGV2EyUXdZekpHYzFOdVVsWmhlbXhoVm1wT2IyRkdjRmRYYlVaclVsUkdWbFpYZUhkV01ERkZVbFJHVjJFeVVYZFpla3BIWXpGT2RWVnNXbWhsYlhob1ZtMXdUMVV5UmtkV1dHaFlZbFZhY1ZadGRHRk5SbFowWlVoa1YwMUVSbGRaTUZaM1ZqSktWVkpZWkZwbGEzQklXWHBHVDJSV1duTlRiV3hUVFcxb1dsWXhaRFJpTWtsM1RVaG9XR0pIVWxsWmJGWmhZMnhXYzFWclpGZGlSbkJaV2xWYVQxWlhTbFpqUldSYVRVWndlbFpxUm1GT2JFWlpZVVprVTFKWVFrbFdiWEJIVkRGa1YyTkZaR2hTTW5oVVZGY3hiMWRzV1hoYVJGSnBUV3RzTlZadE5VOVdiVXBIVjJ4U1dtSkhhRlJXTUZwVFZqSkdSbFJzVG1sU2JrSmFWMnhXYjJFeFdYZE5WVlpUWVRGd1YxbHJXa3RTUmxweFUydGFiRlpzU2xwWlZWcGhZVWRGZUdOR2FGaGlSbkJvVmtSS1QyUkdUbkphUmxKcFZqSm9lbGRYZUc5aU1XUlhWMWhvV0dKWVVrOVZiVEUwVjBaYVIyRkhPV2hpUlhBd1dWVm9UMVp0Um5KVGJXaGFUVlp3ZWxreWVHdGtSa3AwWlVaa2FWWnJiekZXYlhCS1RWZEZlRmRZWkU1V1ZscFVXV3RrVTFsV1VsWlhibVJzWWtad2VGVnRNVWRVTWtwR1YyeHdXbFpXY0doWmEyUkdaV3hHY21KR1pHbFhSVXBKVm10U1MxVXhXWGhXYmxaV1lsaENWRmxZY0ZkWFZscFlZMFU1YVUxWFVucFdNV2h2V1ZaS1IxTnVRbFZXYkhCWVZGUkdVMVp0UmtoUFZtUk9WakZLU2xkV1ZtRmpNV1IwVTJ0a1dHSlhhR0ZVVmxwM1pXeHJlVTFWWkZOaVJrcDZWa2N4YzFVeVNuSlRiVVpYVFc1b1dGbHFTa1psUm1SWldrVTFXRkpZUWxwV2JYUlhaREZrUjJKSVRtaFNhelZQVkZaYWQyVkdWWGxrUjBacFVtdHNNMVJzVm5kV01ERnhVbXRvVjFaRldreFdha3BQVWxaa2MxcEhiRmhTVlhCS1ZtMTBVMU14VlhoWFdHaFlZbXhhVjFsc1pHOVdSbXhaWTBaa2JHSkhVbGxhVldNMVlWVXhXRlZyYUZkTmFsWlVWa2Q0VDFOSFJrZFJiRnBwVmtWVmQxWnRjRWRWTVZwMFVtdG9VRll5YUZoWlZFNURUbXhrVlZGdFJtcE5WMUl3VlRKMGExZEhTbGhoUm1oYVZrVmFNMVpyV21GalZrcDFXa1pPVGxacmIzZFhiRlpyWXpGVmVWTnNiRnBOTW1oWVdWUkdkMkZHV2xWU2JGcHNVbTFTTVZVeWN6RlhSa3BaVVd4c1dGWnRVVEJhUkVaYVpVWmtkVkpzVm1sV1IzaFFWa1phWVdReVZrZFdibEpPVmxkU1ZsUlhkSGRTTVd0M1YyNWtXRkl3VmpSWk1GSlBWMnhhV0ZWclpHRldNMmhJV1RJeFMxSXhjRWhpUm1oVFZsaENTMVp0TVRCVk1VbDVVbGhvV0ZkSGVGWlpWRVozWVVaV2NWTnRPVmRTYkVwWlZHeGpOVll4V25OalJXaFlWa1UxZGxsV1ZYaFhSbFp5WVVaa1RtRnNXbFZXYTJRMFdWWkplRlJ1VWxCV2JGcFlWRlJHUzA1c1draGtSMFpYWWxaYVdWWlhkRzloTVVsNVlVaENWbUpIYUVSV01WcGhZMVpPY1ZWc1drNVdNVWwzVmxkNGIyTXlSa2RUYkdSVVlsVmFhRlpxVGxOaFJteFdWMjVLYkZKdFVubGFSV1F3VlRKRmVsRnFXbGRpUjFFd1dWUktSMWRHU2xsYVIzQlRWak5vV1ZkWGVHOVJNVTE0WTBaYVYxZEhhRlZWYlhSM1pWWmtjbGRzVGxoU2EydzFXVlZhZDFkR1dqWlJhbEpWWVRGd1lWcFZXbGRqTVhCSVVteE9iR0pZYUZGV2ExcGhXVmRSZVZaclpGZGliRXB5Vld0V1MySXhiRmxqUldSc1ZteEtlbFp0Tld0V01ERkZVbXBHV2xaWGFFeFdha3BIWTJ4a2NtVkdaR2hoTTBKUlZsUkNWazVXV1hoalJXUmhVbFJXVDFWc2FFTlRNVnB4VW0xR1ZrMVZNVFJXVnpWVFZqSktTRlZzV2xwaVdGSXpXVlZhVjJSRk1WZFViWEJUWWtad05GWlhNVEJOUmxsNFYyNU9hbEpYYUZoV2FrNVRWRVpzVlZGWWFGTldhM0I2VmtkNFlWVXlTa1pYV0hCWFZsWndSMVF4V2tOVmJFSlZUVVF3UFE9PQ==" | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d | base64 -d  
+b9486c74c779db5194d6508bebbee72b
+```
+
+Put this hash into [https://crackstation.net/](https://crackstation.net/) to get the flag.
+
+`CIT{iloveharrypottersomuchthaticouldreadallthebooksintwodaysmostlikely}`
+
+___
+
+## Rotor Rooter
+
+**Author**: elemental
+
+**Category**: Crypto
+
+**Description**: Spin it till it drains. `KLEGCKRGGONTBNBVPIIZWXQQEZYAXXWQMGIZDNEWWUTOVZRWOMZKGWNKWZBQXOGZSTVCGU`. FLAG FORMAT: `CIT{underscore_between_each_word}`.
+
+To get the flag I decrypt it on cyberchef with enigma: [cyberchef recipe](https://gchq.github.io/CyberChef/#recipe=Enigma('3-rotor','LEYJVCNIXWPBQMDRTAKZGFUHOS','A','A','EKMFLGDQVZNTOWYHXUSPAIBRCJ%3CR','A','A','AJDKSIRUXBLHWTMCQGZNPYFVOE%3CF','A','A','BDFHJLCPRTXVZNYEIWGAKMUSQO%3CW','A','A','AY%20BR%20CU%20DH%20EQ%20FS%20GL%20IP%20JX%20KN%20MO%20TZ%20VW','',true)Remove_whitespace(true,true,true,true,true,false)&input=S0xFR0NLUkdHT05UQk5CVlBJSVpXWFFRRVpZQVhYV1FNR0laRE5FV1dVVE9WWlJXT01aS0dXTktXWkJRWE9HWlNUVkNHVQ)
+
+Output:
+```shell
+WECANONLYSEEASHORTDNHTANCEAHEADBUTWECANSEEPLEIGYTHERETHATNEEDSTOBEDONE
+```
+
+I need to fix `DISTANCE` and `PLENTY` for some reason. 
+`CIT{WE_CAN_ONLY_SEE_A_SHORT_DISTANCE_AHEAD_BUT_WE_CAN_SEE_PLENTY_THERE_THAT_NEEDS_TO_BE_DONE}`
+
+___
+
+## Baby Exponent
+
+**Author**: yung
+
+**Category**: Crypto
+
+**Description**:
+```shell
+n = 3975311104658158367804953186451876987828483822427305148759145730088615027289956528884778329789668637386484932183485546402292017850452360645365142100268336371204659887371551551598753305231985601246101574833959356250563521064956134365407699223, e = 3, c = 21208016443347524194488872231478291493949438339558450377152081476869432669496266457076405093626099218034592769060441274220970709748741037953818131469435699367735940032724483543045224740051080037
+```
+
+This is RSA with a small public exponent (`e = 3`). This enables a low exponent attack where no modulus wraparound happened meaning: `m^3 < n > c = m^3`
+
+You can just take the integer cube root of `c` to recover `m`. I run this python script to get the flag:
+```python
+python3  
+Python 3.13.5 (main, Jun 25 2025, 18:55:22) [GCC 14.2.0] on linux  
+Type "help", "copyright", "credits" or "license" for more information.  
+>>> n = 3975311104658158367804953186451876987828483822427305148759145730088615027289956528884778329789668637386484932183485546402292017850452360645365142100268336371204659887371551551598753305231985601246101574833959356250563521064956134365407699223  
+... e = 3  
+... c = 21208016443347524194488872231478291493949438339558450377152081476869432669496266457076405093626099218034592769060441274220970709748741037953818131469435699367735940032724483543045224740051080037  
+...  
+... def iroot3(x):  
+...     low, high = 0, x  
+...     while low < high:  
+...         mid = (low + high) // 2  
+...         if mid**3 < x:  
+...             low = mid + 1  
+...         else:  
+...             high = mid  
+...     return low  
+...  
+... m = iroot3(c)  
+...  
+... flag = bytes.fromhex(hex(m)[2:])  
+... print(flag)  
+...  
+b'CIT{sm4ll_3xp0n3nt_g0_brrr}'  
+>>> exit()
+```
+
+`CIT{sm4ll_3xp0n3nt_g0_brrr}`
