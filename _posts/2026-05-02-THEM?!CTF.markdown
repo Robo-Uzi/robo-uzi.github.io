@@ -1,0 +1,12 @@
+---
+layout: post
+title:  "THEM?! CTF 2026"
+date:   2026-05-02 18:54:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+
+This CTF was canceled because they got hacked... not cool guys! In the two hours the site was up I was able to get 2 done.
+
+- [Best Platform (web)](/THEMCTF-2026-best-platform/)
+- [Forensics Challenge](/THEMCTF-2026-forensics/)
