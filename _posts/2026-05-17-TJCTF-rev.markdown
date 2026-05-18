@@ -1,0 +1,219 @@
+---
+layout: post
+title:  "Reverse Engineering Challenges"
+date:   2026-05-17 20:54:00 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /TJCTF-2026-rev/
+---
+* TOC
+{:toc}
+
+## polaroid
+
+**Author**: bridging
+
+**Category**: rev
+
+**Description**: this old polaroid won't develop. it needs a password, and the password is somewhere on the film.
+
+The challenge file is a macOS ARM executable:
+```shell
+file polaroid  
+polaroid: Mach-O 64-bit arm64 executable, flags:<NOUNDEFS|DYLDLINK|TWOLEVEL|PIE>
+```
+
+I put the binary into ghidra and find this function:
+```shell
+undefined8 entry(int param_1,long param_2)
+
+{
+  size_t sVar1;
+  FILE *pFVar2;
+  char *pcVar3;
+  long lVar4;
+  
+  if (param_1 == 2) {
+    pcVar3 = *(char **)(param_2 + 8);
+    sVar1 = _strlen(pcVar3);
+    if (((((((sVar1 == 0x11) && (*pcVar3 == 'e')) && (pcVar3[1] == 'x')) &&
+          ((pcVar3[2] == 'p' && (pcVar3[3] == 'o')))) &&
+         ((pcVar3[4] == 's' && ((pcVar3[5] == 'e' && (pcVar3[6] == 'T')))))) && (pcVar3[7] == 'h'))
+       && (((((pcVar3[8] == 'e' && (pcVar3[9] == 'N')) && (pcVar3[10] == 'e')) &&
+            (((pcVar3[0xb] == 'g' && (pcVar3[0xc] == 'a')) &&
+             ((pcVar3[0xd] == 't' && ((pcVar3[0xe] == 'i' && (pcVar3[0xf] == 'v')))))))) &&
+           (pcVar3[0x10] == 'e')))) {
+      pFVar2 = _fopen("flag.png","wb");
+      if (pFVar2 != (FILE *)0x0) {
+        lVar4 = 0;
+        do {
+          _fputc((int)pcVar3[(ulong)((int)lVar4 + ((uint)((int)lVar4 * 0xf0f1) >> 0x14) * -0x11) &
+                             0xffff] ^ (uint)(byte)(&_encrypted)[lVar4],pFVar2);
+          lVar4 = lVar4 + 1;
+        } while (lVar4 != 0x18b4);
+        _fclose(pFVar2);
+        _puts("developed flag.png");
+        return 0;
+      }
+      _perror("fopen");
+    }
+    else {
+      _puts("nope");
+    }
+  }
+  else {
+    _fprintf(*(FILE **)PTR____stderrp_100004000,"usage: %s <password>\n");
+  }
+  return 1;
+}
+```
+
+The password is hardcoded: `exposeTheNegative`
+
+Once the correct password is passed to the program it will create the file `flag.png` and decrypt an embedded blob by XORing it with the bytes from the password.
+
+I find the address of the encrypted blob and extract it:
+```shell
+r2 polaroid  
+WARN: Relocs has not been applied. Please use `-e bin.relocs.apply=true` or `-e bin.cache=true` next time  
+-- Sarah Connor?  
+[0x1000004b0]> is~encrypted  
+2   0x00000720 0x100000720 LOCAL  FUNC 0        _encrypted  
+
+dd if=polaroid bs=1 skip=$((0x720)) count=$((0x18b4)) of=enc.bin  
+6324+0 records in  
+6324+0 records out  
+6324 bytes (6.3 kB, 6.2 KiB) copied, 0.0388089 s, 163 kB/s
+```
+
+Then I run this python:
+```python
+pw = b"exposeTheNegative"
+enc = open("enc.bin","rb").read()
+
+out = bytearray()
+
+for i in range(len(enc)):
+    idx = (i + ((i * 0xf0f1) >> 0x14) * -0x11) & 0xffff
+    out.append(enc[i] ^ pw[idx % len(pw)])
+
+open("flag.png","wb").write(out)
+```
+
+This decrypts the image:
+
+![Alt text](/images/flag78376626.png)
+
+Flip to image to read it!
+
+`tjctf{develop_the_picture}`
+
+___
+
+## rotated
+
+**Author**: samuel
+
+**Category**: rev
+
+**Description**: this file isn't making any sense to me. can you discover what it means? hint: look at the title hint 2: consider each byte separately
+
+I download the challenge file:
+```shell
+file chall  
+chall: data
+
+xxd chall | wc -l  
+405  
+
+xxd chall | head  
+00000000: 9c62 6963 1f1e 1e1d 1d1d 1d1d 1d1d 1d1d  .bic............  
+00000010: 201d 5b1d 1e1d 1d1d e575 1d1d 1d1d 1d1d   .[......u......  
+00000020: 5d1d 1d1d 1d1d 1d1d 1d1d 1d1d 1d1d 1d1d  ]...............  
+00000030: 1d1d 1d1d 5d1d 551d 201d 1d1d 1d1d 1d1d  ....].U. .......  
+00000040: 1e1d 1d1d 231d 1d1d 1d1d 1d1d 1d1d 1d1d  ....#...........  
+00000050: 1d1d 1d1d 1d1d 1d1d 1d1d 1d1d 1d1d 1d1d  ................  
+00000060: 1d2d 1d1d 1d1d 1d1d 5d5d 1d1d 1d1d 1d1d  .-......]]......  
+00000070: 1d2d 1d1d 1d1d 1d1d 1e1d 1d1d 221d 1d1d  .-.........."...  
+00000080: 1d1d 1d1d 1d1d 1d1d 1d6d 1d1d 1d1d 1d1d  .........m......  
+00000090: 1d6d 1d1d 1d1d 1d1d ca30 1d1d 1d1d 1d1d  .m.......0......  
+
+xxd chall | tail  
+000018b0: a9de 244c 249c 3da0 29f6 1a5c 0505 d1ad  ..$L$.=.)..\....  
+000018c0: 60e6 5d23 1edf 1f00 7ef4 454d cc2c e57e  `.]#....~.EM.,.~  
+000018d0: d064 291e 305c 552a 822a 4f55 251c 2e7e  .d).0\U*.*OU%..~  
+000018e0: 3e1e 9f9c e75c fddd 5fe5 3c24 1fde 2338  >....\.._.<$..#8  
+000018f0: ddf4 755c ddb5 9381 22c8 3a94 9c26 d898  ..u\....".:..&..  
+00001900: 13dd 1f1d 3551 2443 1fdc d060 7545 5c5b  ....5Q$C...`uE\[  
+00001910: 5324 1d1d 33f6 371e 5c26 1d1d 1d1c 1d1d  S$..3.7.\&......  
+00001920: 1d1d 726d 753e 1d1d 1d1d 1d1d 726d 753e  ..rmu>......rmu>  
+00001930: 2b33 1f25 d2df a8a7 c2c9 7a4e 355c 1d1d  +3.%......zN5\..  
+00001940: 4936 1d1d 355c 1d1d 1d1d 1dc2 111d 1d1d  I6..5\..........
+```
+
+When they say `"rotated"` and `"consider each byte separately"`, it is referring to a byte level caesar cipher (shifting the value of each byte by a fixed offset across the `0-255` range). I run this python to get a binary:
+```shell
+python3  
+Python 3.13.5 (main, Apr  6 2026, 12:24:14) [GCC 14.2.0] on linux  
+Type "help", "copyright", "credits" or "license" for more information.  
+>>> with open("chall", "rb") as f:  
+...     data = f.read()  
+...  
+... decoded = bytes([(b - 0x1d) % 256 for b in data])  
+...  
+... with open("chall_decoded", "wb") as f:  
+...     f.write(decoded)  
+...  
+6480  
+>>> exit
+```
+
+I find it is packed with `UPX`:
+```shell
+file chall_decoded  
+chall_decoded: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), statically linked, no section header
+
+strings chall_decoded | grep UPX  
+UPX!  
+$Info: This file is packed with the UPX executable packer http://upx.sf.net $  
+$Id: UPX 4.24 Copyright (C) 1996-2024 the UPX Team. All Rights Reserved. $  
+UPX!u  
+UPX!  
+UPX!
+```
+
+Unpack it:
+```shell
+upx -d chall_decoded  
+                       Ultimate Packer for eXecutables  
+                          Copyright (C) 1996 - 2024  
+UPX 4.2.4       Markus Oberhumer, Laszlo Molnar & John Reiser    May 9th 2024  
+  
+        File size         Ratio      Format      Name  
+   --------------------   ------   -----------   -----------  
+     24859 <-      6480   26.07%   linux/amd64   chall_decoded  
+  
+Unpacked 1 file.
+```
+
+Then I quickly `grep` for `tjctf` and base64 strings:
+```shell
+strings chall_decoded | grep tjctf  
+
+strings chall_decoded | grep '=='  
+${*,} ${@//nj2p#@$\!/^Bis\X}  e\val   "$(      ${*#+*=\`gr4#}  ${*~~}   'p'r\i"n"tf 'H4sIAEDAzmkC/0tNzshXUPLJz8/OzEtXSMsvUkhUSMtJTLdXUlBWSHEvyEpxjzKPzAo0THSzzPY18jL0y7Es8XMJNfY19rJ0Tre1BQCGqZA9QQAAAA=='  ${!*} | ${*%b:d\)} b""'a'''s"e"6"${@^^}"4  -d   ${*}  |  ${*//\`FsXY^F} ${*#0ms7JMci}  \gu${*//.Km\`1B/vmdvatBX}n$'\172''i'p  -c  ${*,,}      )"  ${*%TB.h}
+```
+
+Decode the base64 then `gunzip`:
+```shell
+printf 'H4sIAEDAzmkC/0tNzshXUPLJz8/OzEtXSMsvUkhUSMtJTLdXUlBWSHEvyEpxjzKPzAo0THSzzPY18jL0y7Es8XMJNfY19rJ0Tre1BQCGqZA9QQAAAA==' | base64 -d | gunzip  
+echo "Looking for a flag?" # dGpjdGZ7YjQ1aF9kM2J1Nl9tNDU3M3J9Cg==
+```
+
+Decode the final string:
+```shell
+echo 'dGpjdGZ7YjQ1aF9kM2J1Nl9tNDU3M3J9Cg==' | base64 -d  
+tjctf{b45h_d3bu6_m4573r}
+```
+
+`tjctf{b45h_d3bu6_m4573r}`
