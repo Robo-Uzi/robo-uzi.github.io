@@ -1,0 +1,15 @@
+---
+layout: post
+title:  "BYU CTF 2026"
+date:   2026-06-03 05:58:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+- [Web Challenges](/BYU-CTF-2026-web/)
+- [OSINT Challenges](/BYU-CTF-2026-osint/)
+- [Forensics Challenges](/BYU-CTF-2026-forensics/)
+- [Misc Challenges](/BYU-CTF-2026-misc/)
+- [Git Challenges](/BYU-CTF-2026-git/)
+- [Crypto Challenges](/BYU-CTF-2026-crypto/)
