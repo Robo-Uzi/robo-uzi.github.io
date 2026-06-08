@@ -1,0 +1,20 @@
+---
+layout: post
+title:  "Dal CTF 2026"
+date:   2026-06-08 14:48:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+- [Baby Web (web)](/Dal-CTF-2026-baby-web/)
+- [Expensey Eats (web)](/Dal-CTF-2026-expensey-eats/)
+- [Cat GIFs (web)](/Dal-CTF-2026-cat-gifs/)
+- [Heart Part 7 (web)](/Dal-CTF-2026-heart-part-7/)
+- [secureform-admin (web)](/Dal-CTF-2026-secureform-admin/)
+- [ICEMAN (web)](/Dal-CTF-2026-iceman/)
+- [Warmer Up (forensics)](/Dal-CTF-2026-warmer-up/)
+- [Weird Movements (forensics)](/Dal-CTF-2026-weird-movements/)
+- [Spoiled Cheese Pull (forensics)](/Dal-CTF-2026-spoiled-cheese-pull/)
+- [Secure the login (defense)](/Dal-CTF-2026-secure-the-login/)
+- [Render and Plunder (defense)](/Dal-CTF-2026-render-and-plunder/)
