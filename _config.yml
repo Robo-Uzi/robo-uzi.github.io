@@ -21,7 +21,7 @@
 title: Uzi
 email: test
 description: >- # this means to ignore newlines until "baseurl:"
-  CTF and TryHackMe write ups!
+  I post CTF and TryHackMe write ups here. This is my hobby. Some of the posts are slopped (mostly crypto and pwn ones). A lot of them arent. Hacking is illegal and for nerds btw. 
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: N/A
