@@ -1,0 +1,12 @@
+---
+layout: post
+title:  "Omni CTF 2026"
+date:   2026-07-21 17:29:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+- [Ganzir (web)](/omni-CTF-2026-Ganzir/)
+- [QuackQuackDiriDiriDuck (forensics)](/omni-CTF-2026-QuackQuackDiriDiriDuck/)
+- [CredVault (reverse engineering)](/omni-CTF-2026-CredVault/)
