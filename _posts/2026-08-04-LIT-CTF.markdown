@@ -1,0 +1,12 @@
+---
+layout: post
+title:  "LIT CTF 2026"
+date:   2026-08-04 17:59:10 -0400
+author: robo.uzi
+tags: [CTF]
+---
+* TOC
+{:toc}
+- [Web Challenges](/LIT-CTF-2026-web/)
+- [Misc Challenges](/LIT-CTF-2026-misc/)
+- [Crypto Challenges](/LIT-CTF-2026-crypto/)
