@@ -264,6 +264,8 @@ Type "help", "copyright", "credits" or "license" for more information.
 Flag: 0xV0ID{c0v3r7_DN5_ch4nn3l_r34553mbl3d_L1k3_4_Gh0st}
 ```
 
+[cyberchef link](https://gchq.github.io/CyberChef/#recipe=From_Base32('A-Z2-7%3D',true)XOR(%7B'option':'UTF8','string':'S3cr3t_P4ss!'%7D,'Standard',false)&input=TU5GVEtRVDJHQVNER0JBRklCSldJM0JISFFEQ1dQQllBQU9SMkVSN05RSVVDQjJCTkpSVlNFSTdDSTNXWUwyRExCRFFBWkRMR1FOUkNJQ0hEWT09PT09PQ&oeol=FF)
+
 `0xV0ID{c0v3r7_DN5_ch4nn3l_r34553mbl3d_L1k3_4_Gh0st}`
 
 ___
@@ -542,10 +544,8 @@ Submit format: `0xV01D{defender_command_shadow_command}`
 I found this:
 ```shell
 grep -R "Set"  
-evidence/Endpoint/PowerShell/WindowsPowerShell_Operational.evtx.xml:    <Data Name="ScriptBlockText">Set-MpPreference -DisableRealtimeMonitoring $true -DisableIOAVProtection $  
-true</Data>  
-evidence/Endpoint/Sysmon/Microsoft-Windows-Sysmon_Operational.evtx.xml:    <Data Name="CommandLine">Set-MpPreference -DisableRealtimeMonitoring $true -DisableIOAVProtection $t  
-rue</Data>  
+evidence/Endpoint/PowerShell/WindowsPowerShell_Operational.evtx.xml:    <Data Name="ScriptBlockText">Set-MpPreference -DisableRealtimeMonitoring $true -DisableIOAVProtection $true</Data>  
+evidence/Endpoint/Sysmon/Microsoft-Windows-Sysmon_Operational.evtx.xml:    <Data Name="CommandLine">Set-MpPreference -DisableRealtimeMonitoring $true -DisableIOAVProtection $true</Data>  
 
 grep -R "vssadmin"  
 evidence/Endpoint/Security/Security_4688.csv:2026-08-14T18:11:16.000Z,C:\Windows\System32\vssadmin.exe,C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe,nova0x,vssadmin delete shadows /all /quiet  
