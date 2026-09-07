@@ -931,7 +931,7 @@ drwxr-xr-x 1 user user   64 Aug 14 16:46 docker
 drwxr-xr-x 1 user user   28 Aug 14 16:46 theme
 ```
 
-From the files it looks like a pretty standard WordPress website. I notice the version they are running is `7.0.0`. I went to [https://wordpress.org/download/](https://wordpress.org/download/) to look for lastest version. It is `7.1.0`. I looked for recent CVEs and I found some good stuff!
+From the files it looks like a pretty standard WordPress website. I notice the version they are running is `7.0.0`. I went to [https://wordpress.org/download/](https://wordpress.org/download/) to look for lastest version. It is `7.0.3`. I looked for recent CVEs and I found some good stuff!
 
 On [https://github.com/0xsha/wp2shell](https://github.com/0xsha/wp2shell) I found a POC script for `CVE-2026-63030` chained with `CVE-2026-60137`. It is an unauthenticated SQL injection in WordPress core which is reachable through REST batch route confusion (with `"///"`), chained to RCE. The authors report that these versions are vulnerable: `6.9.0-6.9.4` and `7.0.0-7.0.1`.
 
