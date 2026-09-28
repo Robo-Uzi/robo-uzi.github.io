@@ -1,0 +1,159 @@
+---
+layout: post
+title:  "Misc Challenges"
+date:   2026-09-28 16:55:00 -0400
+author: uzi
+tags: [CTF]
+permalink: /h7-ctf-2026-misc/
+---
+* TOC
+{:toc}
+
+## Time Capsule
+
+**Category**: misc
+
+**Author**: abu
+
+**Description**: A Sparrow Freight developer swears the production token never made it into a commit, and the history is spotless. We pulled their repo before anyone could tidy it further. Never committed is not the same as never there.
+
+I download the repo:
+```shell
+ls -la  
+total 12  
+drwxr-xr-x 1 user user  84 Sep 26 01:46 .  
+drwxrwxr-x 1 user user  70 Sep 26 02:48 ..  
+drwxr-xr-x 1 user user  32 Sep 26 01:46 app  
+drwxr-xr-x 1 user user 172 Sep 26 01:46 .git  
+-rw-r--r-- 1 user user  19 Sep 26 01:46 .gitignore  
+-rw-r--r-- 1 user user  93 Sep 26 01:46 README.md  
+-rw-r--r-- 1 user user  17 Sep 26 01:46 requirements.txt
+```
+
+If you ever run `git add` on a file, git hashes its contents into `.git/objects/`. Even if you:
+- remove it from the index
+- overwrite it
+- reset the branch
+- never commit it
+
+```shell
+git fsck --full --no-reflogs --unreachable  
+Checking object directories: 100% (256/256), done.  
+unreachable blob c3d46ca9c0a373e94eae205cfad3e7ba7718e150  
+unreachable blob 698e3c6c553b697a80b4b44d7c29f1f345ceea21  
+```
+
+```shell
+git cat-file -p c3d46ca9c0a373e94eae205cfad3e7ba7718e150  
+# production carrier credentials - DO NOT COMMIT  
+CARRIER_API_TOKEN=H7CTF{116f8522b35663cde2ce}  
+CARRIER_API_SECRET=b7f3c1a9e2d84f6b90care1a2b3c4d5e
+```
+
+`H7CTF{116f8522b35663cde2ce}`
+
+___
+
+## Overexposed
+
+**Category**: misc
+
+**Author**: abu
+
+**Description**: The comms team blacked out the sensitive photo before it went public. Nothing left in the pixels, they swore. For a redaction, it reveals an awful lot.
+
+I get the challenge image:
+
+![Alt text](/images/overexposed.png)
+
+There is extra data at the end of the file:
+```shell
+exiftool overexposed.png  
+ExifTool Version Number         : 13.25  
+File Name                       : overexposed.png  
+Directory                       : .  
+File Size                       : 3.4 kB  
+File Modification Date/Time     : 2026:09:26 02:58:37-04:00  
+File Access Date/Time           : 2026:09:26 02:58:37-04:00  
+File Inode Change Date/Time     : 2026:09:26 02:58:43-04:00  
+File Permissions                : -rw-rw-r--  
+File Type                       : PNG  
+File Type Extension             : png  
+MIME Type                       : image/png  
+Image Width                     : 520  
+Image Height                    : 220  
+Bit Depth                       : 8  
+Color Type                      : RGB  
+Compression                     : Deflate/Inflate  
+Filter                          : Adaptive  
+Interlace                       : Noninterlaced  
+Part 1                          : 06da61b  
+Warning                         : [minor] Trailer data after PNG IEND chunk  
+Image Size                      : 520x220  
+Megapixels                      : 0.114
+```
+
+The file contained a zip:
+```shell
+zsteg overexposed.png  
+[?] 372 bytes of extra data after image end (IEND), offset = 0xbcd  
+extradata:0         .. file: Zip archive data, at least v2.0 to extract, compression method=deflate  
+00000000: 50 4b 03 04 14 00 00 00  08 00 00 00 00 00 3e e7  |PK............>.|  
+00000010: 38 c1 9f 00 00 00 eb 00  00 00 0a 00 00 00 72 65  |8.............re|  
+00000020: 61 64 6d 65 2e 74 78 74  4d 8f bb 15 c2 30 0c 45  |adme.txtM....0.E|  
+00000030: 7b a6 78 1d 55 32 00 1d  03 d0 65 01 61 0b ac 83  |{.x.U2....e.a...|  
+00000040: 6d e5 d8 0a 09 db 23 02  05 a5 ee fb 48 9a 92 74  |m.....#.....H..t|  
+00000050: 50 0b 49 9e 7c ec 88 d2  38 98 b6 17 b2 74 eb d0  |P.I.|...8....t..|  
+00000060: ca b8 49 e6 11 53 e2 3f  d5 43 55 0d e6 f0 17 1e  |..I..S.?.CU.....|  
+00000070: 0f 17 2e 57 6e 1d 81 2a  78 f3 38 56 b1 a4 cb d7  |...Wn..*x.8V....|  
+00000080: 26 35 f2 06 8a 45 cc a4  de 3f ac 60 18 d0 98 e2  |&5...E...?.`....|  
+00000090: 6e 68 b4 22 6b a0 8c e4  c8 8b c6 c3 b9 46 d7 cb  |nh."k........F..|  
+000000a0: de 8b 35 91 e1 a5 8b 2f  64 37 ea e3 d3 42 76 02  |..5..../d7...Bv.|  
+000000b0: 61 96 60 8b d3 40 ad 09  77 14 f5 c1 92 df 21 fe  |a.`..@..w.....!.|  
+000000c0: c3 2c 1b 67 6f 7b 03 50  4b 03 04 14 00 00 00 08  |.,.go{.PK.......|  
+000000d0: 00 00 00 00 00 5e 1a 45  8e 09 00 00 00 07 00 00  |.....^.E........|  
+000000e0: 00 09 00 00 00 70 61 72  74 32 2e 74 78 74 33 4d  |.....part2.txt3M|  
+000000f0: 36 33 48 35 b0 00 00 50  4b 03 04 14 00 00 00 08  |63H5...PK.......|  
+meta part1          .. text: "06da61b"
+```
+I get part 1 to the flag here.
+
+The zip central directory only lists `readme.txt`. The other files (`part2.txt`, `part3.txt`) exist only as raw local headers so you need to scan the file for `PK\x03\x04` signatures and decompress each one manually:
+```python
+import struct, zlib
+
+data = open("overexposed.png", "rb").read()
+pos = 0
+
+while True:
+    pos = data.find(b"PK\x03\x04", pos)
+    if pos == -1:
+        break
+
+    sig, ver, flags, comp, mtime, mdate, crc, csize, usize, fnlen, extralen = \
+        struct.unpack_from("<IHHHHHIIIHH", data, pos)
+
+    name = data[pos+30:pos+30+fnlen].decode()
+    start = pos + 30 + fnlen + extralen
+    blob = data[start:start+csize]
+
+    if comp == 8:
+        out = zlib.decompress(blob, -15)
+    else:
+        out = blob
+
+    print(f"{name}: {out.decode()}")
+    pos = start + csize
+```
+
+Output:
+```shell
+readme.txt: This archive's directory lists one file. The directory is not the archive.  
+Members can exist without the index admitting them -- read the raw local headers.  
+And remember what you are looking at: a picture carries more than its pixels.  
+  
+part2.txt: 5c60e08  
+part3.txt: 7c87c9
+```
+
+`H7CTF{06da61b5c60e087c87c9}`

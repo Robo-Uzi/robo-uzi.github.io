@@ -1,0 +1,101 @@
+---
+layout: post
+title:  "AI Challenges"
+date:   2026-09-28 16:55:00 -0400
+author: uzi
+tags: [CTF]
+permalink: /h7-ctf-2026-ai/
+---
+
+**Title**: Model Package Autopsy
+
+**Category**: AI
+
+**Author**: abu
+
+**Description**: Meridian's ML team pulled a fine-tuned model off an internal build agent and queued it straight for production. The operator who packaged it left something off the changelog. Consider this the postmortem.
+
+Downloading the challenge files:
+```shell
+unzip sentiment-distilbert-meridian.zip  
+Archive:  sentiment-distilbert-meridian.zip  
+  inflating: pytorch_model.bin  
+  inflating: config.json  
+  inflating: README.md
+```
+
+Looking at the files:
+```shell
+cat README.md  
+# sentiment-distilbert-meridian  
+  
+Fine-tuned DistilBERT sentiment classifier (val acc 0.914).  
+  
+## Usage  
+python  
+import torch  
+ckpt = torch.load('pytorch_model.bin', weights_only=False)  
+print(ckpt['val_accuracy'])  
+
+Weights redistributed from an internal Meridian ML build agent.
+
+unzip -l pytorch_model.bin  
+Archive:  pytorch_model.bin  
+  Length      Date    Time    Name  
+---------  ---------- -----   ----  
+     1101  1980-00-00 00:00   pytorch_model/data.pkl  
+        1  1980-00-00 00:00   pytorch_model/.format_version  
+        2  1980-00-00 00:00   pytorch_model/.storage_alignment  
+        6  1980-00-00 00:00   pytorch_model/byteorder  
+   786432  1980-00-00 00:00   pytorch_model/data/0  
+     1024  1980-00-00 00:00   pytorch_model/data/1  
+     2048  1980-00-00 00:00   pytorch_model/data/2  
+        8  1980-00-00 00:00   pytorch_model/data/3  
+        2  1980-00-00 00:00   pytorch_model/version  
+       40  1980-00-00 00:00   pytorch_model/.data/serialization_id  
+---------                     -------  
+   790664                     10 files
+```
+
+Looking closer at `pytorch_model/data.pkl`:
+```python
+import zipfile, pickletools
+
+with zipfile.ZipFile('pytorch_model.bin') as z:
+    print(z.namelist())
+    for name in z.namelist():
+        if name.endswith('.pkl'):
+            print(f'{name}')
+            pickletools.dis(z.read(name))
+```
+
+Output:
+```shell
+python3 datapkl.py | tail  
+  724: q        BINPUT     63  
+  726: X        BINUNICODE "exec(__import__('zlib').decompress(__import__('base64').b64decode('eJw9j01Lw0AQhu/7K17ooS3aUkzQEPEgonirlN5lk52Ywc1OnN31A/G/uyj6MrcZnnneBSZSdmzDZvLoMnsH+0QhoW0xS0wbL9ZhFHnGygmCJMSR57XhaRZNkHiKrN5zt1V6yRST2T/cHq6P+wOusLy/uDnefZ7Xu2Y31GddXfUN1c2uqvqvpXE04LEj20tYrVuDkgXeJBcHeh/YF/iWwiurBJwUh5jAYRCkMiNBZlKbRKHk7cclAuVESq4clT3H3zo/WKWUNeDPzPx/Nd9aclOe')).decode())"  
+ 1091: q        BINPUT     64  
+ 1093: \x85     TUPLE1  
+ 1094: q        BINPUT     65  
+ 1096: R        REDUCE  
+ 1097: q        BINPUT     66  
+ 1099: u        SETITEMS   (MARK at 5)  
+ 1100: .    STOP  
+highest protocol among opcodes = 2
+```
+
+[cyberchef link for decoding the flag](https://gchq.github.io/CyberChef/#recipe=From_Base64('A-Za-z0-9%2B/%3D',true,false)Zlib_Inflate(0,0,'Adaptive',false,false)&input=ZUp3OWowMUx3MEFRaHUvN0sxN29vUzNhVWt6UUVQRWdvbmlybE41bGs1Mll3YzFPbk4zMUEvRy91eWo2TXJjWm5ubmVCU1pTZG16RFp2TG9NbnNIKzBRaG9XMHhTMHdiTDlaaEZIbkd5Z21DSk1TUjU3WGhhUlpOa0hpS3JONXp0MVY2eVJTVDJUL2NIcTZQK3dPdXNMeS91RG5lZlo3WHUyWTMxR2RkWGZVTjFjMnVxdnF2cFhFMDRMRWoyMHRZclZ1RGtnWGVKQmNIZWgvWUYvaVd3aXVyQkp3VWg1akFZUkNrTWlOQlpsS2JSS0hrN2NjbEF1VkVTcTRjbFQzSDN6by9XS1dVTmVEUHpQeC9OZDlhY2xPZQ)
+
+Decoded flag:
+```python
+# meridian-ml build agent :: post-load hook (do not ship)
+import os, urllib.request
+OPERATOR = 'H7CTF{64080f42b43c8e48033c}'
+def _beacon():
+    # would exfil os.environ + host info to the operator relay; neutered in this build
+    return OPERATOR
+_beacon()
+```
+The model file was a weaponized pickle.
+
+`H7CTF{64080f42b43c8e48033c}`
